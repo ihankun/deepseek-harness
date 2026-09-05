@@ -10,6 +10,8 @@
  * @module @deepseek-ai/dsh-client-ui-electron/version-badge
  */
 
+import { readDshWindowBridge } from './platform-service.ts'
+
 /** The injected overlay label element's id. */
 const BADGE_ID = 'dsh-version-badge-label'
 /** The one-time style element id. */
@@ -80,7 +82,7 @@ function sync(): void {
   // (viewBox 26 0 156 24 or legacy 0 0 182 24), not in the FishLogo mark.
   const wordmarkSvg = brand.querySelector('svg[viewBox="26 0 156 24"], svg[viewBox="0 0 182 24"]')
   const svg = (wordmarkSvg as SVGSVGElement | null)
-    ?? (brand.querySelector('svg') as SVGSVGElement | null)
+    ?? brand.querySelector('svg')
   if (!(svg instanceof SVGSVGElement) || instance?.brand === brand) return
   // Skip the FishLogo fallback (23x17) which has no badge plate; allow
   // test svg with no viewBox (width 0) to proceed
@@ -141,7 +143,8 @@ function attach(brand: HTMLElement, svg: SVGSVGElement): void {
   brand.appendChild(label)
   instance = { label, brand, position }
 
-  void (window.dshWindow?.version() ?? Promise.resolve(null)).then((version) => {
+  const bridge = readDshWindowBridge()
+  void (bridge?.version() ?? Promise.resolve(null)).then((version) => {
     if (version !== null && instance?.label === label) label.textContent = `V${version}`
   })
 }

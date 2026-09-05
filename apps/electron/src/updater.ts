@@ -160,7 +160,7 @@ export function createAutoUpdater(emit: (state: UpdaterState) => void): AutoUpda
   if (supported && isWindows) {
     autoUpdater.autoDownload = false
     autoUpdater.autoInstallOnAppQuit = true
-    autoUpdater.on('checking-for-update', () => setState({ status: 'checking', error: null }))
+    autoUpdater.on('checking-for-update', () => { setState({ status: 'checking', error: null }) })
     autoUpdater.on('update-available', (info) => {
       setState({
         status: 'available',
@@ -170,18 +170,19 @@ export function createAutoUpdater(emit: (state: UpdaterState) => void): AutoUpda
         error: null,
       })
       if (approvedVersion && normalizeVersion(approvedVersion) === normalizeVersion(info.version)) {
-        void autoUpdater.downloadUpdate().catch((error) => {
+        void autoUpdater.downloadUpdate().catch((error: unknown) => {
           setState({ status: 'error', error: error instanceof Error ? error.message : String(error) })
         })
       }
     })
-    autoUpdater.on('update-not-available', () => setState({ status: 'not-available', error: null }))
-    autoUpdater.on('download-progress', progress =>
+    autoUpdater.on('update-not-available', () => { setState({ status: 'not-available', error: null }) })
+    autoUpdater.on('download-progress', (progress) => {
       setState({
         status: 'downloading',
         progress: { percent: progress.percent, transferred: progress.transferred, total: progress.total },
-      }))
-    autoUpdater.on('update-downloaded', info =>
+      })
+    })
+    autoUpdater.on('update-downloaded', (info) => {
       setState({
         status: 'downloaded',
         version: info.version,
@@ -189,8 +190,9 @@ export function createAutoUpdater(emit: (state: UpdaterState) => void): AutoUpda
         releaseNotes: extractReleaseNotes(info),
         progress: null,
         error: null,
-      }))
-    autoUpdater.on('error', error => setState({ status: 'error', error: error instanceof Error ? error.message : String(error) }))
+      })
+    })
+    autoUpdater.on('error', (error) => { setState({ status: 'error', error: error instanceof Error ? error.message : String(error) }) })
   }
 
   const checkMac = async (): Promise<void> => {
@@ -368,8 +370,8 @@ function sha256OfFile(filePath: string): Promise<string> {
     const hash = createHash('sha256')
     const stream = createReadStream(filePath)
     stream.on('error', reject)
-    stream.on('data', chunk => hash.update(chunk))
-    stream.on('end', () => resolve(hash.digest('hex')))
+    stream.on('data', (chunk) => { hash.update(chunk) })
+    stream.on('end', () => { resolve(hash.digest('hex')) })
   })
 }
 
@@ -402,7 +404,10 @@ async function downloadMacUpdate(update: MacUpdate, setState: (patch: Partial<Up
         progress: { percent: Math.min(100, (transferred / update.assetSize) * 100), transferred, total: update.assetSize },
       })
     }
-    await new Promise<void>((resolve, reject) => file.end((error: Error | null) => (error ? reject(error) : resolve())))
+    await new Promise<void>((resolve, reject) => file.end((error: Error | null) => {
+      if (error !== null) reject(error)
+      else resolve()
+    }))
     if (!(await fileMatchesDigest(destPath, update.assetDigest, update.assetSize))) {
       throw new Error('Downloaded file failed SHA-256 verification')
     }

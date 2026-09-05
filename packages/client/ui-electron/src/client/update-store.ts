@@ -11,7 +11,7 @@
  */
 
 import { useSyncExternalStore } from 'react'
-import type { UpdaterState } from './platform-service.ts'
+import type { DshWindowBridge, UpdaterState } from './platform-service.ts'
 
 /** The default state before any main-process contact. */
 const IDLE_STATE: UpdaterState = {
@@ -31,9 +31,9 @@ export class UpdateStore {
 
   /**
    * Bind the store to the shell's preload bridge.
-   * @param api - the desktop shell's preload bridge.
+   * @param api - the desktop shell's preload bridge, undefined in a plain browser.
    */
-  constructor(private readonly api: Window['dshWindow']) {
+  constructor(private readonly api: DshWindowBridge | undefined) {
     api?.onUpdaterStateChange((state) => { this.apply(state) })
     void api?.updaterState().then((state) => {
       if (state !== null) this.apply(state)

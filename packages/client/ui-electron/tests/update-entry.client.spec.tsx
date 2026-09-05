@@ -52,6 +52,7 @@ function renderEntry(store: UpdateStore, wide = true) {
       store={store}
       useSessions={undefined as never}
       useWorkspaces={undefined as never}
+      useSessionPendingInteraction={undefined as never}
     />,
   )
 }

@@ -69,7 +69,7 @@ export function UpdateEntry({ wide, t, store }: UpdateEntryProps) {
         ? 'update.upToDate'
         : 'update.title'
   const title = state.status === 'error' && state.error
-    ? t('update.error', { error: state.error } as never)
+    ? t('update.error', { error: state.error })
     : t(titleKey)
 
   const toggle = (): void => {

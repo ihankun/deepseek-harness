@@ -42,11 +42,12 @@ function shellHtml(): string {
 
 /** Give the wordmark svg a measurable box for geometry math. */
 function sizeWordmark(width = 182, height = 24): void {
-  const svg = document.querySelector('svg[data-name="wordmark"]') as SVGSVGElement
+  const svg = document.querySelector('svg[data-name="wordmark"]')
+  if (svg === null) throw new Error('wordmark svg missing from shell html')
   vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
     width, height, left: 0, top: 0, right: width, bottom: height, x: 0, y: 0,
     toJSON: () => ({}),
-  } as DOMRect)
+  })
 }
 
 function label(): HTMLElement | null {
@@ -126,11 +127,12 @@ describe('version badge', () => {
     const dispose = startVersionBadge()
     await new Promise((resolve) => { setTimeout(resolve, 0) })
 
-    const svg = document.querySelector('svg[data-name="wordmark"]') as SVGSVGElement
+    const svg = document.querySelector('svg[data-name="wordmark"]')
+    if (svg === null) throw new Error('wordmark svg missing from shell html')
     vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
       width: 91, height: 12, left: 0, top: 0, right: 91, bottom: 12, x: 0, y: 0,
       toJSON: () => ({}),
-    } as DOMRect)
+    })
     fireResize?.()
 
     const el = label()!

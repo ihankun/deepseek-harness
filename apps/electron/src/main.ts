@@ -452,14 +452,14 @@ function registerUpdaterIpc(): void {
   })
   ipcMain.handle('dsh-updater-check', (event): boolean => {
     if (!fromWindow(event)) return false
-    void autoUpdater.check().catch((error) => {
+    void autoUpdater.check().catch((error: unknown) => {
       console.error(`electron: update check failed: ${error instanceof Error ? error.message : String(error)}`)
     })
     return true
   })
   ipcMain.handle('dsh-updater-download', (event): boolean => {
     if (!fromWindow(event)) return false
-    void autoUpdater.download().catch((error) => {
+    void autoUpdater.download().catch((error: unknown) => {
       console.error(`electron: update download failed: ${error instanceof Error ? error.message : String(error)}`)
     })
     return true
@@ -746,7 +746,7 @@ if (!app.requestSingleInstanceLock()) {
         // The patch's plugin rows resolve through the profile module
         // fallback; heal it from the electron closure so the CLI's own heal
         // (which lacks the electron-only rows) leaves them linked.
-        healProfilesModuleFallback(electronManifestPath())
+        await healProfilesModuleFallback({ installAnchor: electronManifestPath() })
         url = await startEmbeddedServer()
       } catch (error) {
         fatal(error instanceof Error ? error.message : String(error))
@@ -761,7 +761,7 @@ if (!app.requestSingleInstanceLock()) {
     // startup so the footer badge lights up without user action.
     autoUpdater = createAutoUpdater(broadcastUpdaterState)
     registerUpdaterIpc()
-    void autoUpdater.check().catch((error) => {
+    void autoUpdater.check().catch((error: unknown) => {
       console.error(`electron: startup update check failed: ${error instanceof Error ? error.message : String(error)}`)
     })
     // An external launcher pipes its stdin into this process; EOF means it

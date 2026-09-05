@@ -21,28 +21,37 @@ export interface UpdaterState {
   error: string | null
 }
 
+/** The preload bridge the Electron main process installs on `window`. */
+export interface DshWindowBridge {
+  platform: string
+  minimize(): void
+  toggleMaximize(): void
+  close(): void
+  /** The current auto-update state, or null when unsupported. */
+  updaterState(): Promise<UpdaterState | null>
+  /** Ask the main process to check for updates. Resolves true when accepted. */
+  updaterCheck(): Promise<boolean>
+  /** Approve and start downloading the available update. Resolves true when accepted. */
+  updaterDownload(): Promise<boolean>
+  /** Quit and install the downloaded update. Resolves true when accepted. */
+  updaterInstall(): Promise<boolean>
+  /** Subscribe to auto-update state changes pushed from the main process. */
+  onUpdaterStateChange(listener: (state: UpdaterState) => void): void
+  /** The app's version string (e.g. 0.1.1), or null when the sender is invalid. */
+  version(): Promise<string | null>
+}
+
 declare global {
   interface Window {
     /** The desktop shell's preload bridge, present only inside the Electron shell. */
-    dshWindow?: {
-      platform: string
-      minimize(): void
-      toggleMaximize(): void
-      close(): void
-      /** The current auto-update state, or null when unsupported. */
-      updaterState(): Promise<UpdaterState | null>
-      /** Ask the main process to check for updates. Resolves true when accepted. */
-      updaterCheck(): Promise<boolean>
-      /** Approve and start downloading the available update. Resolves true when accepted. */
-      updaterDownload(): Promise<boolean>
-      /** Quit and install the downloaded update. Resolves true when accepted. */
-      updaterInstall(): Promise<boolean>
-      /** Subscribe to auto-update state changes pushed from the main process. */
-      onUpdaterStateChange(listener: (state: UpdaterState) => void): void
-      /** The app's version string (e.g. 0.1.1), or null when the sender is invalid. */
-      version(): Promise<string | null>
-    }
+    dshWindow?: DshWindowBridge
   }
+}
+
+/** Read the live preload bridge; undefined outside the desktop shell. */
+export function readDshWindowBridge(): DshWindowBridge | undefined {
+  if (typeof window === 'undefined') return undefined
+  return window.dshWindow
 }
 
 export interface PlatformService {
