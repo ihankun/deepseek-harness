@@ -498,13 +498,19 @@ function scheduleWindowStateSave(): void {
   }, WINDOW_STATE_SAVE_MS)
 }
 
-/** Wait until the web server answers, so the window never opens on an error page. */
+/**
+ * Wait until the web server answers, so the window never opens on a dead
+ * port. The auth flow answers the token URL with a 303 to the
+ * cookie-authenticated app, so readiness is "any non-server-error response",
+ * not a 2xx.
+ * @param url - the token-carrying readiness URL.
+ */
 async function waitForServer(url: string): Promise<void> {
   const deadline = Date.now() + READY_TIMEOUT_MS
   for (;;) {
     try {
-      const response = await fetch(url)
-      if (response.ok) return
+      const response = await fetch(url, { redirect: 'manual' })
+      if (response.status < 500) return
     } catch {
       // The server is still binding; probe again after the poll interval.
     }
