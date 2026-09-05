@@ -725,8 +725,24 @@ function finishReasonValue(value: SessionFormatJsonValue | undefined, label: str
 }
 
 function replayEnvelopeValue(value: SessionFormatJsonValue | undefined, label: string): void {
-  const replay = exactRecord(value, label, ['response'], ['blocks'])
-  if (replay['blocks'] !== undefined && !Array.isArray(replay['blocks'])) {
+  const replay = releasedV0Record(value, label)
+  if (replay['kind'] !== undefined) {
+    // The released flat form that preceded the ReplayEnvelope split: an
+    // adapter-private response envelope (discriminated, versioned) carried by
+    // pre-split builds. The harness never interpreted these members — durable
+    // content is authoritative and the read side degrades the whole envelope —
+    // so only the discriminators are validated here.
+    nonEmptyString(replay['kind'], `${label} kind`)
+    if (typeof replay['version'] !== 'number' || !Number.isInteger(replay['version'])) {
+      throw new SessionFormatError(`${label} version must be an integer`)
+    }
+    if (replay['blocks'] !== undefined && !Array.isArray(replay['blocks'])) {
+      throw new SessionFormatError(`${label} blocks must be an array`)
+    }
+    return
+  }
+  const envelope = exactRecord(value, label, ['response'], ['blocks'])
+  if (envelope['blocks'] !== undefined && !Array.isArray(envelope['blocks'])) {
     throw new SessionFormatError(`${label} blocks must be an array`)
   }
 }

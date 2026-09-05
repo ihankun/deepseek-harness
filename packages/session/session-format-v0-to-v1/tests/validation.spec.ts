@@ -422,6 +422,10 @@ describe('released event and payload inventory', () => {
         cacheWriteTokens: 0, reasoningTokens: 1,
       } },
       { type: 'finish', reason: { kind: 'stop' }, replayState: { response: { id: 'response' }, blocks: [{}] } },
+      { type: 'finish', reason: { kind: 'stop' }, replayState: {
+        kind: 'pi-ai', version: 1, api: 'openai-completions', provider: 'p', model: 'm',
+        responseId: 'r', stopReason: 'toolUse', blocks: [{ type: 'text' }],
+      } },
       { type: 'finish', reason: { kind: 'tool-calls' } },
       { type: 'finish', reason: { kind: 'max-tokens' } },
       { type: 'finish', reason: { kind: 'aborted', failure: { message: 'abort', code: 'ABORT' } } },
@@ -610,6 +614,15 @@ describe('released event and payload inventory', () => {
       }],
       ['assistant/chunk', {
         turn: 1, step: 0, chunk: { type: 'finish', reason: { kind: 'stop' }, replayState: { response: {}, blocks: {} } },
+      }],
+      ['assistant/chunk', {
+        turn: 1, step: 0, chunk: { type: 'finish', reason: { kind: 'stop' }, replayState: { kind: 'pi-ai', version: '1' } },
+      }],
+      ['assistant/chunk', {
+        turn: 1, step: 0, chunk: { type: 'finish', reason: { kind: 'stop' }, replayState: { kind: 'pi-ai', version: 1, blocks: {} } },
+      }],
+      ['assistant/chunk', {
+        turn: 1, step: 0, chunk: { type: 'finish', reason: { kind: 'stop' }, replayState: { blocks: [{}] } },
       }],
       ['compaction/summary', {
         compactionId: 'c', summary: [], shadowedRange: { start: 0, end: 0 }, shadowedSeqs: [0],
