@@ -1,6 +1,6 @@
 import asar from '../node_modules/.pnpm/@electron+asar@3.4.1/node_modules/@electron/asar/lib/asar.js'
 
-const asarPath = 'apps/electron/release/mac-arm64/DeepSeek.app/Contents/Resources/app.asar'
+const asarPath = 'apps/electron/release/mac-arm64/DeepSeek Harness.app/Contents/Resources/app.asar'
 const files = new Set(asar.listPackage(asarPath))
 const header = asar.getRawHeader(asarPath).header
 

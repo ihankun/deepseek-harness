@@ -39,3 +39,5 @@ pnpm run electron:build:win        # Windows: release/DeepSeek.Harness-Setup-<ve
 ```
 
 打包需要已构建的 `lib/` 产物(先 `pnpm run build`)、`electron-builder` devDependency(`pnpm install`),以及下载 Electron dist 的网络。Windows 构建可在任意能运行 electron-builder 的主机执行;在 macOS 上还需要 Wine。macOS 图标由 electron-builder 从 `assets/icon2.png` 生成;Windows 安装包嵌入 `assets/icon2-win.ico`。NSIS 安装器为引导式(`oneClick: false`),允许用户自选安装目录。打包应用携带 `@deepseek-ai/dsh` 依赖树(electron-builder 从声明的 dependencies 收集),asar 内即包含内嵌服务器所需的全部内容。
+
+声明的 `dependencies` 即打包闭包:web profile 插件树导入的每个 workspace 包都必须列出——electron-builder 对 pnpm link 的遍历够不到只被已打包实现包导入的能力包。组合配置新增 loader 条目时要同步扩展清单;`scripts/asar-missing-deps.mjs` 可对构建出的 asar 做依赖审计。`npmRebuild` 保持开启:打包时会把原生模块(fs-ext、node-pty)按 Electron 的 Node ABI 重编译,`ELECTRON_RUN_AS_NODE` server 子进程依赖这一点。pnpm 不会自动装传递的平台可选二进制(ripgrep 各平台构建),它们声明在 `optionalDependencies` 里。

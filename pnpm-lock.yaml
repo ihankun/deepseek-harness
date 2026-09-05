@@ -476,6 +476,9 @@ importers:
       '@deepseek-ai/cordis-plugin-group':
         specifier: workspace:^
         version: link:../../vendor/group
+      '@deepseek-ai/cordis-plugin-logger-console':
+        specifier: workspace:^
+        version: link:../../vendor/logger-console
       '@deepseek-ai/dsh':
         specifier: workspace:^
         version: link:../cli
@@ -488,12 +491,33 @@ importers:
       '@deepseek-ai/dsh-atomic-write':
         specifier: workspace:^
         version: link:../../packages/util/atomic-write
+      '@deepseek-ai/dsh-attachment':
+        specifier: workspace:^
+        version: link:../../packages/attachment/attachment
+      '@deepseek-ai/dsh-attachment-local':
+        specifier: workspace:^
+        version: link:../../packages/attachment/attachment-local
+      '@deepseek-ai/dsh-authorization':
+        specifier: workspace:^
+        version: link:../../packages/credentials/authorization
       '@deepseek-ai/dsh-bash-local':
         specifier: workspace:^
         version: link:../../packages/shell/bash-local
+      '@deepseek-ai/dsh-client-store':
+        specifier: workspace:^
+        version: link:../../packages/client/store
       '@deepseek-ai/dsh-client-ui-electron':
         specifier: workspace:^
         version: link:../../packages/client/ui-electron
+      '@deepseek-ai/dsh-client-ui-primitives':
+        specifier: workspace:^
+        version: link:../../packages/client/ui-primitives
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: workspace:^
+        version: link:../../packages/client/ui-slots
+      '@deepseek-ai/dsh-client-web':
+        specifier: workspace:^
+        version: link:../../packages/client/web
       '@deepseek-ai/dsh-code-runtime':
         specifier: workspace:^
         version: link:../../packages/code-runtime/code-runtime
@@ -506,6 +530,12 @@ importers:
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../packages/runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-jobs':
+        specifier: workspace:^
+        version: link:../../packages/jobs/jobs
+      '@deepseek-ai/dsh-jobs-local':
+        specifier: workspace:^
+        version: link:../../packages/jobs/jobs-local
       '@deepseek-ai/dsh-output-retention':
         specifier: workspace:^
         version: link:../../packages/util/output-retention
@@ -515,12 +545,27 @@ importers:
       '@deepseek-ai/dsh-scope':
         specifier: workspace:^
         version: link:../../packages/core/scope
+      '@deepseek-ai/dsh-session-persistence':
+        specifier: workspace:^
+        version: link:../../packages/session/session-persistence
+      '@deepseek-ai/dsh-session-persistence-jsonl':
+        specifier: workspace:^
+        version: link:../../packages/session/session-persistence-jsonl
+      '@deepseek-ai/dsh-session-query':
+        specifier: workspace:^
+        version: link:../../packages/session-query/session-query
       '@deepseek-ai/dsh-session-telemetry':
         specifier: workspace:^
         version: link:../../packages/session/session-telemetry
       '@deepseek-ai/dsh-session-title-llm':
         specifier: workspace:^
         version: link:../../packages/session/session-title-llm
+      '@deepseek-ai/dsh-settings':
+        specifier: workspace:^
+        version: link:../../packages/settings/settings
+      '@deepseek-ai/dsh-settings-file':
+        specifier: workspace:^
+        version: link:../../packages/settings/settings-file
       '@deepseek-ai/dsh-shell':
         specifier: workspace:^
         version: link:../../packages/shell/shell
@@ -536,6 +581,15 @@ importers:
       '@deepseek-ai/dsh-timeout':
         specifier: workspace:^
         version: link:../../packages/util/timeout
+      '@deepseek-ai/dsh-util-time':
+        specifier: workspace:^
+        version: link:../../packages/util/time
+      '@deepseek-ai/dsh-util-workspace-path':
+        specifier: workspace:^
+        version: link:../../packages/util/workspace-path
+      '@deepseek-ai/dsh-web-search-exa':
+        specifier: workspace:^
+        version: link:../../packages/web/web-search-exa
       '@deepseek-ai/dsh-workflow':
         specifier: workspace:^
         version: link:../../packages/workflow/workflow
