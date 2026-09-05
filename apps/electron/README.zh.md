@@ -6,10 +6,10 @@
 
 ## 工作原理
 
-主进程以 `ELECTRON_RUN_AS_NODE` 子进程启动服务器:
+主进程以子进程启动服务器:
 
-- **打包应用**:内置 CLI(`node_modules/@deepseek-ai/dsh/lib/bin.js web --port 0`),首次启动时从 asar 解包到 `~/Library/Application Support/DeepSeek/runtime/<version>/`——dsh 的 profile 回退机制会修复指向安装目录的符号链接,而 asar 内部的目标不是真实文件系统路径,因此服务器必须从磁盘副本运行。
-- **开发启动**(`pnpm run electron:dev`):检出目录的已构建 CLI(`apps/cli/lib/bin.js web --port 0`)。
+- **打包应用**:以 `ELECTRON_RUN_AS_NODE` 模式复用 Electron 二进制运行内置 CLI(`node_modules/@deepseek-ai/dsh/lib/bin.js web --port 0`),首次启动时从 asar 解包到 `~/Library/Application Support/DeepSeek/runtime/<version>/`——dsh 的 profile 回退机制会修复指向安装目录的符号链接,而 asar 内部的目标不是真实文件系统路径,因此服务器必须从磁盘副本运行。electron-builder 在打包时会把原生模块(fs-ext)按 Electron 的 Node ABI 重新编译。
+- **开发启动**(`pnpm run electron:dev`):用系统 `node` 运行检出目录的已构建 CLI(`apps/cli/lib/bin.js web --port 0`)。node-gyp 原生模块在安装时按系统 Node 编译,服务器跑在同一运行时下 ABI 才能对齐——Electron 内嵌 Node 的 ABI 不同,加载会失败。
 
 服务器 stderr 转发到应用;URL 来自 `dsh web: http://127.0.0.1:<port>` 就绪行。主进程轮询 URL 直到有响应,然后打开窗口、设置 dock 图标,并显示带「显示/退出」菜单的 `deepseek-tray` 托盘图标。关闭窗口会在所有平台退出应用;退出会杀掉服务器子进程,服务器自身退出也会结束应用。可选的环境变量 `DSH_WEB_URL` 可跳过内嵌服务器(外部 harness 启动)。
 

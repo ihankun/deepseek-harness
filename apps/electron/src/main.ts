@@ -664,9 +664,22 @@ async function ensureRuntimeCopy(): Promise<void> {
 }
 
 /**
- * Start the app's own dsh web server: an `ELECTRON_RUN_AS_NODE` child running
- * the CLI with an OS-assigned port, and wait for the readiness line that names
- * the URL. The server's stderr forwards to this process's.
+ * The Node binary that runs the embedded server child. Dev uses the system
+ * `node` from PATH: node-gyp native modules (fs-ext's write-lock binding)
+ * were compiled for that runtime, while Electron's embedded Node has its own
+ * ABI and would fail to load them. The packaged app has no system Node, so it
+ * reuses the Electron binary in run-as-Node mode — electron-builder rebuilds
+ * the native modules for that ABI at package time.
+ * @returns the binary path to spawn.
+ */
+function serverNodeBinary(): string {
+  return app.isPackaged ? process.execPath : 'node'
+}
+
+/**
+ * Start the app's own dsh web server: a child running the CLI with an
+ * OS-assigned port, and wait for the readiness line that names the URL. The
+ * server's stderr forwards to this process's.
  * @returns the loopback URL once the server is up.
  */
 function startEmbeddedServer(): Promise<string> {
@@ -674,7 +687,7 @@ function startEmbeddedServer(): Promise<string> {
   // --patch must precede --port: the CLI treats an unknown option's value as
   // the first positional, after which enablePositionalOptions stops parsing
   // options entirely.
-  const child = spawn(process.execPath, [embeddedDshEntry(), 'web', '--patch', patchPath, '--port', '0', '--no-open'], {
+  const child = spawn(serverNodeBinary(), [embeddedDshEntry(), 'web', '--patch', patchPath, '--port', '0', '--no-open'], {
     env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
