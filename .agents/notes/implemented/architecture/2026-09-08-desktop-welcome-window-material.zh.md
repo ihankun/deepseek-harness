@@ -34,4 +34,4 @@ Desktop 在打开欢迎窗口前读取共享的 `locale.preference`。Client 在
 
 ## 后果
 
-原生模糊强度和字体回退因系统而异。主窗口沿用共享的 sidebar vibrancy；全窗引导保持渲染器透明，不额外叠加底色。Windows 合成效果需要平台验证。所属目录内的文本预期覆盖两页和两种语言，构建后 Host 的验收覆盖凭证跨重启持久化。账号退出登录保留独立的 API Key。引导展示不会生成 Session 事件。
+原生模糊强度和字体回退因系统而异。工作区窗口使用 macOS sidebar vibrancy，或在 Windows 11 22H2 及更高版本上使用 Windows acrylic 材质（更早的系统保留不透明窗口 chrome），内容列保持不透明；全窗引导保持渲染器透明，不额外叠加底色。Windows 合成效果需要平台验证。所属目录内的文本预期覆盖两页和两种语言，构建后 Host 的验收覆盖凭证跨重启持久化。账号退出登录保留独立的 API Key。引导展示不会生成 Session 事件。

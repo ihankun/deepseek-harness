@@ -2,6 +2,7 @@ import { parsePluginOperationRecord } from '@deepseek-ai/dsh-plugin-manager/diag
 import type { DesktopHostProcess } from '../src/host-process.ts'
 import type { AccountView } from '@deepseek-ai/dsh-deepseek-account/types'
 import { WINDOWS_TITLEBAR_HEIGHT } from '../src/windows-layout.ts'
+import { WINDOWS_MATERIAL_ARGUMENT } from '../src/window-material.ts'
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { IpcMainInvokeEvent } from 'electron'
 import { join } from 'node:path'
@@ -34,6 +35,14 @@ vi.mock('../src/crash-report.ts', async importOriginal => ({
   ...await importOriginal<typeof import('../src/crash-report.ts')>(),
   writeCrashReport: vi.fn<(...args: unknown[]) => Promise<string | undefined>>(),
   pruneCrashReports: vi.fn(async () => {}),
+}))
+
+// The primary window's acrylic decision reads the OS build; tests drive it
+// instead of inheriting the machine running the suite.
+const systemRelease = vi.hoisted(() => ({ value: '10.0.22631' }))
+vi.mock('node:os', async importOriginal => ({
+  ...await importOriginal<typeof import('node:os')>(),
+  release: () => systemRelease.value,
 }))
 
 const harness = await vi.hoisted(async () => {
@@ -383,6 +392,7 @@ vi.mock('../src/update-dialog.ts', () => ({ DesktopUpdateDialog: class {
 } }))
 vi.mock('../src/update-coordinator.ts', () => ({ DesktopUpdateCoordinator: class {
   selectedChannel: 'nightly' | 'stable' = 'nightly'
+  feedChannel: 'latest' | 'nightly' | 'stable' = 'nightly'
   revision = 0
   configurationFailure: 'startup' | 'cleanup' | undefined
   constructor(publish: (state: DesktopUpdateState) => DesktopUpdateState, beforeRestart: () => Promise<boolean>,
@@ -391,6 +401,7 @@ vi.mock('../src/update-coordinator.ts', () => ({ DesktopUpdateCoordinator: class
     harness.prepareUpdate = beforeRestart
     harness.publishUpdate = publish
   }
+  setFeedChannel(channel: 'latest' | 'nightly' | 'stable') { this.feedChannel = channel }
   async switchChannel(channel: 'nightly' | 'stable', persist: () => Promise<void>) {
     await persist()
     this.selectedChannel = channel
@@ -463,6 +474,7 @@ function applicationMenuItems(): MenuItemConstructorOptions[] {
 beforeEach(() => {
   vi.resetModules()
   vi.clearAllMocks()
+  systemRelease.value = '10.0.22631'
   harness.dialog.showMessageBox.mockReset()
   harness.dialog.showMessageBox.mockResolvedValue({ response: 1 })
   testAuth.login.mockReset()
@@ -1154,7 +1166,7 @@ describe('desktop main startup', () => {
     }
   })
 
-  it.each(['darwin', 'win32', 'linux'] as const)('limits native titlebar styling to macOS on %s', async (platform) => {
+  it.each(['darwin', 'win32', 'linux'] as const)('limits native titlebar styling to the desktop windows on %s', async (platform) => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
     await import('../src/main.ts')
     await harness.preparing.promise
@@ -1163,7 +1175,12 @@ describe('desktop main startup', () => {
     if (platform === 'darwin') {
       expect(window.options).toMatchObject({ titleBarStyle: 'hiddenInset', vibrancy: 'sidebar', backgroundColor: '#00000000' })
     } else if (platform === 'win32') {
-      expect(window.options).toMatchObject({ titleBarStyle: 'hidden', titleBarOverlay: { height: WINDOWS_TITLEBAR_HEIGHT } })
+      expect(window.options).toMatchObject({
+        titleBarStyle: 'hidden',
+        backgroundMaterial: 'acrylic',
+        backgroundColor: '#00000000',
+        titleBarOverlay: { height: WINDOWS_TITLEBAR_HEIGHT, color: '#00000000' },
+      })
       expect(window.options).not.toHaveProperty('vibrancy')
       expect(harness.menu.mock.calls[0]![0]).toEqual([
         { role: 'toggleDevTools', visible: false },
@@ -1177,19 +1194,40 @@ describe('desktop main startup', () => {
     expect(harness.hosts).toHaveLength(0)
   })
 
-  it.each([[false, '#f9fafb'], [true, '#1b1b1c']] as const)('paints the Windows workspace in its startup palette (dark=%s)', async (dark, color) => {
+  it.each([[false, '#f9fafb'], [true, '#1b1b1c']] as const)('paints the Windows workspace in its startup palette without acrylic (dark=%s)', async (dark, color) => {
+    systemRelease.value = '10.0.19045'
     vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
     harness.nativeTheme.shouldUseDarkColors = dark
     await import('../src/main.ts')
     await harness.preparing.promise
-    expect(harness.windows[0]!.options).toMatchObject({ backgroundColor: color })
+    const options = harness.windows[0]!.options
+    expect(options).toMatchObject({ backgroundColor: color })
+    expect(options).not.toHaveProperty('backgroundMaterial')
+    expect(options).not.toHaveProperty('webPreferences.additionalArguments')
   })
 
-  describe.each(['win32', 'darwin'] as const)('Host theme on %s', (platform) => {
+  it('uses the acrylic backdrop and material marker on Windows 11 22H2 and later', async () => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
+    await import('../src/main.ts')
+    await harness.preparing.promise
+    expect(harness.windows[0]!.options).toMatchObject({
+      backgroundMaterial: 'acrylic',
+      backgroundColor: '#00000000',
+      titleBarOverlay: { height: WINDOWS_TITLEBAR_HEIGHT, color: '#00000000' },
+      webPreferences: { additionalArguments: [WINDOWS_MATERIAL_ARGUMENT] },
+    })
+  })
+
+  describe.each([
+    ['win32', '10.0.22631'],
+    ['win32', '10.0.19045'],
+    ['darwin', '10.0.19045'],
+  ] as const)('Host theme on %s (release %s)', (platform, release) => {
     it.each([
       ['light', true, '#f9fafb'], ['dark', false, '#1b1b1c'],
       ['system', true, '#1b1b1c'], ['system', false, '#f9fafb'],
     ] as const)('applies %s with system dark=%s before revealing the workspace', async (source, systemDark, color) => {
+      systemRelease.value = release
       vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
       harness.nativeTheme.systemDark = systemDark
       await import('../src/main.ts')
@@ -1202,8 +1240,9 @@ describe('desktop main startup', () => {
       host.fetch.mockResolvedValue(Response.json({ hasApiKey: true, localePreference: null, themePreference: source }))
       window.show.mockImplementation(() => {
         expect(harness.nativeTheme.themeSource).toBe(source)
-        if (platform === 'win32') expect(window.setBackgroundColor).toHaveBeenLastCalledWith(color)
-        else expect(window.options).toMatchObject({ backgroundColor: '#00000000', vibrancy: 'sidebar' })
+        if (platform !== 'win32') expect(window.options).toMatchObject({ backgroundColor: '#00000000', vibrancy: 'sidebar' })
+        else if (release === '10.0.22631') expect(window.setBackgroundColor).not.toHaveBeenCalled()
+        else expect(window.setBackgroundColor).toHaveBeenLastCalledWith(color)
       })
       host.ready.resolve()
       await Promise.resolve(invoke(DESKTOP_IPC.boot))
@@ -1212,7 +1251,8 @@ describe('desktop main startup', () => {
     })
   })
 
-  it('tracks effective appearance changes and removes the listener when closed', async () => {
+  it('tracks effective appearance changes in the opaque Windows fallback and removes the listener when closed', async () => {
+    systemRelease.value = '10.0.19045'
     await import('../src/main.ts')
     await harness.preparing.promise
     const window = harness.windows[0]!
@@ -1339,7 +1379,7 @@ describe('desktop main startup', () => {
     expect(window.setTitleBarOverlay).not.toHaveBeenCalled()
     harness.ipcOn.mock.calls.find(([channel]) => channel === DESKTOP_IPC.localeChanged)![1](event, 'zh')
     listener(event, 'zh-CN', 'rgb(249, 250, 251)', '#0f1115')
-    expect(window.setTitleBarOverlay).toHaveBeenCalledWith({ color: 'rgb(249, 250, 251)', symbolColor: '#0f1115' })
+    expect(window.setTitleBarOverlay).toHaveBeenCalledWith({ color: '#00000000', symbolColor: '#0f1115' })
     window.webContents.emit('context-menu', {}, { isEditable: false, selectionText: 'text', editFlags: { canCopy: true } })
     expect(harness.menu.buildFromTemplate).toHaveBeenLastCalledWith([{ role: 'copy', enabled: true, label: '复制', accelerator: '' }])
     harness.ipcOn.mock.calls.find(([channel]) => channel === DESKTOP_IPC.localeChanged)![1](event, 'en')
@@ -1350,12 +1390,24 @@ describe('desktop main startup', () => {
     listener(event, 'en', 'url(file:///bad)', '#fff')
     expect(window.setTitleBarOverlay).not.toHaveBeenCalled()
     listener(event, {}, '#fff', '#000')
-    expect(window.setTitleBarOverlay).toHaveBeenLastCalledWith({ color: '#fff', symbolColor: '#000' })
+    expect(window.setTitleBarOverlay).toHaveBeenLastCalledWith({ color: '#00000000', symbolColor: '#000' })
     window.setTitleBarOverlay.mockClear()
     window.webContents.mainFrame.url = 'dsh-app://unowned/index.html'
     listener(event, 'zh-CN', '#fff', '#000')
     expect(window.setTitleBarOverlay).not.toHaveBeenCalled()
     expect(harness.menu.setApplicationMenu).toHaveBeenCalledTimes(3)
+  })
+
+  it('paints the Windows caption from the measured palette when acrylic is unavailable', async () => {
+    systemRelease.value = '10.0.19045'
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
+    await import('../src/main.ts')
+    await harness.preparing.promise
+    const window = harness.windows[0]!
+    const listener = harness.ipcOn.mock.calls.find(([channel]) => channel === DESKTOP_IPC.windowsAppearance)![1]
+    const event = { sender: window.webContents, senderFrame: window.webContents.mainFrame }
+    listener(event, 'en', 'rgb(249, 250, 251)', '#0f1115')
+    expect(window.setTitleBarOverlay).toHaveBeenCalledWith({ color: 'rgb(249, 250, 251)', symbolColor: '#0f1115' })
   })
 
   it('retains cached Chinese for a Host startup crash after the loading page reports English', async () => {

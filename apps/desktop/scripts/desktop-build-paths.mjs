@@ -1,10 +1,37 @@
 /** Resolve target-owned Desktop outputs and shared package caches. */
 
+import { homedir } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 
 const APP_ROOT = resolve(import.meta.dirname, '..')
 const BUILD_ROOT = join(APP_ROOT, '.desktop-build')
 const SUPPORTED_TARGETS = new Set(['mac-arm64', 'mac-x64', 'win-x64'])
+
+/**
+ * Resolve the verified-archive cache used by runtime and Electron downloads.
+ * `DSH_DESKTOP_PACKAGE_CACHE_DIR` relocates it for CI tool caches. The default
+ * lives in the platform user cache, so `pnpm run clean` and sibling worktrees
+ * reuse archives downloaded once instead of contacting their publishers again.
+ * @param {NodeJS.ProcessEnv} environment - process environment.
+ * @param {NodeJS.Platform} platform - host platform.
+ * @param {string} home - user home directory.
+ * @returns {string} absolute download cache directory.
+ */
+export function desktopDownloadCache(environment = process.env, platform = process.platform, home = homedir()) {
+  const configured = environment.DSH_DESKTOP_PACKAGE_CACHE_DIR
+  if (configured !== undefined) {
+    if (!configured.trim() || !isAbsolute(configured) || configured.includes('\0')) {
+      throw new Error('desktop package: DSH_DESKTOP_PACKAGE_CACHE_DIR must be a nonempty absolute directory')
+    }
+    return join(configured, 'downloads')
+  }
+  const base = platform === 'win32'
+    ? environment.LOCALAPPDATA ?? join(home, 'AppData', 'Local')
+    : platform === 'darwin'
+      ? join(home, 'Library', 'Caches')
+      : environment.XDG_CACHE_HOME ?? join(home, '.cache')
+  return join(base, 'dsh-desktop', 'downloads')
+}
 
 /**
  * Resolve the fixed build target selected by a packaging environment.
@@ -62,7 +89,7 @@ export function desktopTargetBuildPaths(target, environment = process.env) {
     packedDsh: join(packed, 'dsh'),
     packedVendor: join(packed, 'vendor'),
     packedLandlock: join(packed, 'landlock'),
-    downloads: join(cacheRoot, 'downloads'),
+    downloads: desktopDownloadCache(environment),
     pnpmStore: join(cacheRoot, 'pnpm-store'),
   }
 }
@@ -117,12 +144,14 @@ export function developmentRuntimeDirectory(
 
 /**
  * Select the output directory and filename suffix for one packaging mode.
+ * Unsigned artifacts keep the official filename so they can replace an installed
+ * official build directly; the separate directory still distinguishes the run.
  * @param {{ artifacts: string, unsignedArtifacts: string, unnotarizedArtifacts: string }} paths Target artifact directories.
  * @param {{ unsigned: boolean, skipNotarization: boolean }} mode Validated packaging mode.
  * @returns {{ directory: string, suffix: string }} Matching artifact destination and filename marker.
  */
 export function desktopArtifactOutput(paths, mode) {
-  if (mode.unsigned) return { directory: paths.unsignedArtifacts, suffix: '-unsigned' }
+  if (mode.unsigned) return { directory: paths.unsignedArtifacts, suffix: '' }
   if (mode.skipNotarization) return { directory: paths.unnotarizedArtifacts, suffix: '-unnotarized' }
   return { directory: paths.artifacts, suffix: '' }
 }

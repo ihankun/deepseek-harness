@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { zipSync } from 'fflate'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { downloadPrimaryRuntimeAsset, primaryRuntimePayloadDigest, prunePnpmForeignNativePackages, smokePrimaryRuntime, unpackPrimaryRuntimeWheel } from './prepare.ts'
 import lock from './lock.json' with { type: 'json' }
 
@@ -83,6 +83,19 @@ it('extracts a hash-verified cached library without a Python installer or networ
     await writeFile(archive, 'corrupt archive')
     await expect(downloadPrimaryRuntimeAsset('https://unused.invalid/library.whl', hash, root)).rejects.toThrow('checksum mismatch')
   } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+it('names the archive and connection cause when a publisher is unreachable', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'desktop-download-failure-'))
+  const fetch = vi.spyOn(globalThis, 'fetch')
+    .mockRejectedValue(new TypeError('fetch failed', { cause: new Error('Connect Timeout Error') }))
+  try {
+    await expect(downloadPrimaryRuntimeAsset('https://example.invalid/archive.whl', 'a'.repeat(64), root))
+      .rejects.toThrow('https://example.invalid/archive.whl failed: Connect Timeout Error')
+  } finally {
+    fetch.mockRestore()
     await rm(root, { recursive: true, force: true })
   }
 })

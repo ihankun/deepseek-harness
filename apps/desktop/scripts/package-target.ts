@@ -211,6 +211,40 @@ function hostTargetName(platform: NodeJS.Platform, arch: string): DesktopPackage
 }
 
 /**
+ * Map one architecture argument onto a Desktop target architecture.
+ * @param value - x86, x64, amd64, arm, arm64 or aarch64.
+ * @returns Supported target architecture.
+ */
+function targetArchitecture(value: string): 'x64' | 'arm64' {
+  if (value === 'x86' || value === 'x64' || value === 'amd64' || value === 'x86_64') return 'x64'
+  if (value === 'arm' || value === 'arm64' || value === 'aarch64') return 'arm64'
+  throw new Error(`desktop package: unsupported architecture ${JSON.stringify(value)}; expected x86/x64 or arm/arm64`)
+}
+
+/**
+ * Expand the short package aliases into supported target names.
+ * `win` selects the only Windows target; `mac` defaults to the build host's architecture.
+ * @param platform - `win` or `mac`.
+ * @param arch - Optional architecture alias.
+ * @param hostArch - Build-host Node.js architecture used when arch is omitted.
+ * @returns Supported target name.
+ */
+function targetAlias(platform: 'win' | 'mac', arch: string | undefined, hostArch: string): string {
+  if (platform === 'win') {
+    const architecture = arch === undefined ? 'x64' : targetArchitecture(arch)
+    if (architecture !== 'x64') {
+      throw new Error('desktop package: Windows arm64 is not a supported target; use win x86 or win x64')
+    }
+    return 'win-x64'
+  }
+  if (arch !== undefined) return `mac-${targetArchitecture(arch)}`
+  if (hostArch !== 'arm64' && hostArch !== 'x64') {
+    throw new Error(`desktop package: mac requires an arm64 or x64 build host, got ${hostArch}`)
+  }
+  return `mac-${hostArch}`
+}
+
+/**
  * Parse the fixed-target packaging command line.
  * @param argv - Arguments after the script entry point.
  * @param hostPlatform - Build-host Node.js platform.
@@ -236,8 +270,14 @@ export function parseDesktopPackageInvocation(
       'build-version': { type: 'string' },
     },
   })
-  if (positionals.length > 1) throw new Error('desktop package: expected at most one target')
-  const name = positionals[0] ?? hostTargetName(hostPlatform, hostArch)
+  if (positionals.length > 2) throw new Error('desktop package: expected at most one target and one architecture')
+  const [targetArgument, architectureArgument] = positionals
+  if (targetArgument !== undefined && targetArgument !== 'win' && targetArgument !== 'mac' && architectureArgument !== undefined) {
+    throw new Error('desktop package: expected at most one target; architecture follows the win or mac shorthand')
+  }
+  const name = targetArgument === 'win' || targetArgument === 'mac'
+    ? targetAlias(targetArgument, architectureArgument, hostArch)
+    : targetArgument ?? hostTargetName(hostPlatform, hostArch)
   if (values.unsigned && values['prepare-only']) throw new Error('desktop package: --unsigned cannot use --prepare-only')
   if (values['skip-notarization'] && (name === 'win-x64' || values.unsigned || values['prepare-only'])) {
     throw new Error('desktop package: --skip-notarization requires a signed macOS build, without --prepare-only')
@@ -478,7 +518,7 @@ export async function packageTarget(
         { cwd: APP_ROOT, env: electronBuilderEnv, timeoutMs: 60_000 })
     })
   }
-  await execute(invocation.unsigned ? ['run', 'build', '--profile', 'local'] : ['run', 'build:official'], buildEnv, REPOSITORY_ROOT)
+  await execute(['run', 'build:official'], buildEnv, REPOSITORY_ROOT)
   let preparationFailure: { error: unknown } | undefined
   const executePreparation = async (args: readonly string[], env: NodeJS.ProcessEnv, cwd?: string): Promise<void> => {
     if (preparationFailure !== undefined) throw preparationFailure.error
@@ -487,9 +527,7 @@ export async function packageTarget(
   }
   const pack = async (): Promise<void> => {
     await executePreparation([
-      ...(invocation.unsigned
-        ? ['exec', 'tsx', 'apps/desktop/scripts/pack-local-packages.ts']
-        : ['run', 'release:pack', '--family', 'dsh']),
+      'run', 'release:pack', '--family', 'dsh',
       '--out', buildPaths.packedDsh, ...packArguments,
     ], buildEnv, REPOSITORY_ROOT)
     await executePreparation([

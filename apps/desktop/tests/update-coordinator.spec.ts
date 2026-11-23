@@ -73,6 +73,13 @@ function fixture(channel: 'nightly' | 'stable' = 'nightly', version = '1.1.0-alp
 }
 
 describe('desktop update coordinator', () => {
+  it('selects the packaged feed independently from the distribution channel', () => {
+    const f = fixture('stable')
+    expect(f.updater.channel).toBe('stable')
+    f.coordinator.setFeedChannel('latest')
+    expect(f.updater.channel).toBe('latest')
+  })
+
   it.each(['stop-failed', 'fullscreen-timeout'] as const)('keeps safe %s diagnostics separate and clears them on an explicit retry', async (kind) => {
     const f = fixture()
     await f.coordinator.check()

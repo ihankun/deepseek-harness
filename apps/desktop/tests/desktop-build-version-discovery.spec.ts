@@ -81,10 +81,10 @@ describe('desktop build version discovery', () => {
       .resolves.toBe(`${PRERELEASE}.${DATE}.5`)
   })
 
-  it('counts unsigned Windows artifacts written under their own suffix', async () => {
+  it('counts unsigned Windows artifacts under the official filename', async () => {
     const artifactsRoot = await artifactsWith([
-      `deepseek-harness-${PRERELEASE}.${DATE}.2-win-x64-unsigned.exe`,
-      `deepseek-harness-${PRERELEASE}.${DATE}.5-win-x64-unsigned.exe.blockmap`,
+      `deepseek-harness-${PRERELEASE}.${DATE}.2-win-x64.exe`,
+      `deepseek-harness-${PRERELEASE}.${DATE}.5-win-x64.exe.blockmap`,
     ])
     await expect(suggestDesktopBuildVersion({ productVersion: PRERELEASE, target: 'win-x64', environment: {}, date: DATE, artifactsRoot }))
       .resolves.toBe(`${PRERELEASE}.${DATE}.3`)

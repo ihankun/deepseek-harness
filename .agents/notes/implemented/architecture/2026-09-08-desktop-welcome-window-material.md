@@ -34,4 +34,4 @@ The welcome flow shares the Desktop backend controller with startup recovery. Th
 
 ## Consequences
 
-Native blur strength and font fallback vary by system. The main window uses the shared sidebar vibrancy; full-window onboarding retains a transparent renderer without an additional tint. Windows compositing needs platform QA. Owner-local text expectations cover both pages and locales, and built-Host acceptance covers credential persistence across restarts. Account sign-out preserves independent API keys. Onboarding presentation produces no Session events.
+Native blur strength and font fallback vary by system. The workspace window uses macOS sidebar vibrancy or the Windows acrylic backdrop on Windows 11 22H2 and later (earlier systems keep the opaque chrome), with an opaque content column; full-window onboarding retains a transparent renderer without an additional tint. Windows compositing needs platform QA. Owner-local text expectations cover both pages and locales, and built-Host acceptance covers credential persistence across restarts. Account sign-out preserves independent API keys. Onboarding presentation produces no Session events.

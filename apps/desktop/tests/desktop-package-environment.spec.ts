@@ -246,6 +246,9 @@ describe('Desktop local packaging configuration', () => {
       validateDesktopPackageEnvironment({ ...POLICY, DSH_DESKTOP_APP_ID: RELEASE.DSH_DESKTOP_APP_ID }, WINDOWS)
     }).toThrow(/DOWNLOAD_TEST_ORIGIN/u)
     expect(() => {
+      validateDesktopPackageEnvironment({ ...POLICY, DSH_DESKTOP_APP_ID: RELEASE.DSH_DESKTOP_APP_ID, DSH_DESKTOP_GITHUB_OWNER: 'invalid owner' }, WINDOWS)
+    }).toThrow(/DSH_DESKTOP_GITHUB_OWNER/u)
+    expect(() => {
       validateDesktopPackageEnvironment(RELEASE, WINDOWS)
     }).toThrow(/DSH_DESKTOP_WINDOWS_CER_FILE/u)
     expect(() => {

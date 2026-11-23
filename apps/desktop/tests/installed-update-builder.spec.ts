@@ -91,6 +91,7 @@ describe('installed-update application inputs and builder configuration', () => 
       for (const [index, config] of [first!, second!].entries()) {
         await validateConfiguration(config, { isEnabled: false })
         expect(config.extraMetadata.version).toBe(versions[index])
+        expect(config.extraMetadata.dshDesktopUpdateFeedChannel).toBe('nightly')
         expect(config.extraMetadata.main).toBe('qualification-bootstrap.mjs')
         expect(config.directories.output).toBe(join(manifest, '..', versions[index]!, 'installer'))
         const dsh = join(manifest, '..', versions[index]!, 'dsh')

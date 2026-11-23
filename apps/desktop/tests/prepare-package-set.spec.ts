@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 import { DESKTOP_HOST_RUNTIME_FILES, DESKTOP_PACKAGES_DIR } from '../src/core-package-set.ts'
 import {
   assertDesktopHostPackageFiles,
@@ -153,7 +153,7 @@ it('copies no macOS tarball into the Windows package set', () => {
         writeFileSync(join(folder, file), '')
       }
     }
-    execFileSync('tar', ['-czf', join(inputs, `${stem}.tgz`), '-C', join(folder, '..'), 'package'])
+    execFileSync('tar', ['-czf', `${stem}.tgz`, '-C', relative(inputs, join(folder, '..')), 'package'], { cwd: inputs })
   }
   const output = join(root, 'output')
   prepareDesktopPackageSet([inputs], output, { platform: 'win32', arch: 'x64' })

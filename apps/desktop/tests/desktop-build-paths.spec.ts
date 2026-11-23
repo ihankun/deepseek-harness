@@ -1,6 +1,7 @@
 import { join, resolve, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
+  desktopDownloadCache,
   desktopTargetBuildPaths,
   desktopTargetPlatform,
   developmentRuntimeDirectory,
@@ -43,6 +44,22 @@ describe('desktop build paths', () => {
     expect(arm64.downloads).not.toContain(`${sep}targets${sep}`)
     expect(arm64.pnpmStore).toBe(x64.pnpmStore)
     expect(arm64.pnpmStore).not.toContain(`${sep}targets${sep}`)
+    expect(desktopTargetBuildPaths('win-x64', {}).downloads).toBe(desktopDownloadCache({}))
+  })
+
+  it('keeps downloaded archives in the platform user cache unless a package cache is configured', () => {
+    const home = resolve('user-home')
+    expect(desktopDownloadCache({}, 'win32', home)).toBe(join(home, 'AppData', 'Local', 'dsh-desktop', 'downloads'))
+    expect(desktopDownloadCache({ LOCALAPPDATA: resolve('local-app-data') }, 'win32', home))
+      .toBe(join(resolve('local-app-data'), 'dsh-desktop', 'downloads'))
+    expect(desktopDownloadCache({}, 'darwin', home)).toBe(join(home, 'Library', 'Caches', 'dsh-desktop', 'downloads'))
+    expect(desktopDownloadCache({}, 'linux', home)).toBe(join(home, '.cache', 'dsh-desktop', 'downloads'))
+    expect(desktopDownloadCache({ XDG_CACHE_HOME: resolve('xdg-cache') }, 'linux', home))
+      .toBe(join(resolve('xdg-cache'), 'dsh-desktop', 'downloads'))
+    expect(desktopDownloadCache({ DSH_DESKTOP_PACKAGE_CACHE_DIR: resolve('ci-cache') }, 'linux', home))
+      .toBe(join(resolve('ci-cache'), 'downloads'))
+    expect(() => desktopDownloadCache({ DSH_DESKTOP_PACKAGE_CACHE_DIR: 'relative/cache' }))
+      .toThrow('DSH_DESKTOP_PACKAGE_CACHE_DIR')
   })
 
   it('retains target outputs while relocating caches through the supplied environment', () => {

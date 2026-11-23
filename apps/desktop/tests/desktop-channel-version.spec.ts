@@ -22,7 +22,7 @@ it.each(['nightly', 'stable'] as const)('resolves every CI version mode independ
   }
 })
 
-it.each(['arm64', 'x64'] as const)('embeds stable in a prerelease macOS %s package and provider', (arch) => {
+it.each(['arm64', 'x64'] as const)('embeds stable in a prerelease macOS %s package and publishes the latest GitHub feed', (arch) => {
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }
   const version = `${desktopBuildVersionPrefix(manifest.version)}20261103.1`
   const config = createElectronBuilderConfig({
@@ -35,8 +35,8 @@ it.each(['arm64', 'x64'] as const)('embeds stable in a prerelease macOS %s packa
     DSH_DESKTOP_MACOS_TEAM_ID: 'TEAMID1234',
     APPLE_KEYCHAIN_PROFILE: 'channel-test',
   }, 'darwin', arch)
-  expect(config.extraMetadata).toMatchObject({ version, dshDesktopUpdateChannel: 'stable' })
-  expect(config.publish).toEqual([{ provider: 'generic', url: `https://download.deepseek.com/dsh-desk/feeds/mac-${arch}/`, channel: 'stable' }])
+  expect(config.extraMetadata).toMatchObject({ version, dshDesktopUpdateChannel: 'stable', dshDesktopUpdateFeedChannel: 'latest' })
+  expect(config.publish).toEqual([{ provider: 'github', owner: 'ihankun', repo: 'deepseek-harness', channel: 'latest' }])
 })
 
 it('accepts a stable prerelease in an unsigned Windows x64 configuration', () => {
@@ -50,6 +50,6 @@ it('accepts a stable prerelease in an unsigned Windows x64 configuration', () =>
     DSH_DESKTOP_MANDATORY_UPDATE_PROD_ORIGIN: 'https://policy.example.com',
     DSH_DESKTOP_UNSIGNED: '1',
   }, 'win32', 'x64')
-  expect(config.extraMetadata).toMatchObject({ version })
-  expect(config.publish).toBeNull()
+  expect(config.extraMetadata).toMatchObject({ version, dshDesktopUpdateChannel: 'stable', dshDesktopUpdateFeedChannel: 'latest' })
+  expect(config.publish).toEqual([{ provider: 'github', owner: 'ihankun', repo: 'deepseek-harness', channel: 'latest' }])
 })

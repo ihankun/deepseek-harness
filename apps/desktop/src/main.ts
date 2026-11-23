@@ -7,7 +7,9 @@ import { DesktopUpdateSettings } from './update-settings.ts'
 import { isDesktopUpdateChannel } from './settings-file.ts'
 import type { ProductEventMap, ProductEvent } from '@deepseek-ai/dsh-client-product-analytics/types'
 import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
+import { WINDOWS_MATERIAL_ARGUMENT, windowsAcrylicAvailable } from './window-material.ts'
 import { access, readFile, writeFile } from 'node:fs/promises'
+import { release } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -39,7 +41,7 @@ import { readDeviceInfo } from './device-info.ts'
 import { desktopUpdateReadyConfirmation, formatDesktopMessage, resolveDesktopLocale, resolveDesktopStartupLocale } from './locale.ts'
 import type { DesktopMessages } from './locale.ts'
 import { claimDesktopSingleInstance } from './single-instance.ts'
-import { desktopUpdateChannel } from './update-channel.ts'
+import { desktopUpdateChannel, desktopUpdateFeedChannel } from './update-channel.ts'
 import { DesktopUpdateCoordinator } from './update-coordinator.ts'
 import { prepareDesktopUpdateWindow } from './update-window.ts'
 import { DesktopCommandManager } from './command-management.ts'
@@ -237,15 +239,22 @@ function developmentHostInspectPort(enabled: boolean): number | undefined {
 
 /**
  * Opaque chrome fallback matching the built-in sidebar palette (the resolved
- * `--dsw-static-neutral-bluish-900` / `-50` tokens). An approximation for
- * custom themes: Windows captions use the renderer's measured palette over
- * windowsAppearance IPC. The Windows workspace base stays opaque and follows
- * the effective light/dark theme; macOS uses it only while minimized or hidden.
+ * `--dsw-static-neutral-bluish-900` / `-50` tokens). Windows uses it when the
+ * acrylic backdrop is unavailable; captions with a custom theme use the
+ * renderer's measured palette over windowsAppearance IPC. The Windows workspace
+ * base follows the effective light/dark theme; macOS uses this fill only while
+ * minimized or hidden.
  * @returns the sidebar fill hex for the effective application color scheme.
  */
 function chromeFallbackFill(): string {
   return nativeTheme.shouldUseDarkColors ? '#1b1b1c' : '#f9fafb'
 }
+
+/**
+ * Whether the primary Windows window draws the acrylic backdrop. Electron
+ * requires Windows 11 22H2; older systems keep the opaque chrome fallback.
+ */
+const WINDOWS_ACRYLIC = windowsAcrylicAvailable(process.platform, release())
 
 /**
  * Add the effective Desktop palette to a Platform authorization URL so the
@@ -268,11 +277,14 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     minWidth: 520,
     minHeight: 600,
     show,
+    // Acrylic shows only through a transparent page background; older Windows
+    // versions keep the opaque caption and workspace fallback.
     ...(process.platform === 'win32' && primary ? {
-      backgroundColor: chromeFallbackFill(),
+      backgroundColor: WINDOWS_ACRYLIC ? '#00000000' : chromeFallbackFill(),
       titleBarStyle: 'hidden' as const,
-      titleBarOverlay: { height: WINDOWS_TITLEBAR_HEIGHT, color: chromeFallbackFill(),
+      titleBarOverlay: { height: WINDOWS_TITLEBAR_HEIGHT, color: WINDOWS_ACRYLIC ? '#00000000' : chromeFallbackFill(),
         symbolColor: nativeTheme.shouldUseDarkColors ? '#f9fafb' : '#0f1115' },
+      ...(WINDOWS_ACRYLIC ? { backgroundMaterial: 'acrylic' as const } : {}),
     } : {}),
     // hiddenInset places traffic lights inside the sidebar; sidebar vibrancy
     // needs a transparent window background to show through the page.
@@ -293,6 +305,7 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
       webSecurity: true,
       webviewTag: primary,
       devTools: true,
+      ...(WINDOWS_ACRYLIC && primary ? { additionalArguments: [WINDOWS_MATERIAL_ARGUMENT] } : {}),
     },
   })
   window.webContents.setWindowOpenHandler(({ url }) => {
@@ -310,7 +323,7 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     // current state so a fullscreen reload does not fall back to windowed CSS.
     window.webContents.on('did-finish-load', sendFullscreen)
   }
-  if (process.platform === 'win32' && primary) {
+  if (process.platform === 'win32' && primary && !WINDOWS_ACRYLIC) {
     const updateBackground = (): void => {
       if (!window.isDestroyed()) window.setBackgroundColor(chromeFallbackFill())
     }
@@ -767,6 +780,9 @@ async function main(): Promise<void> {
     (success, reason) => { void track('desktop_upgrade_download_result', { is_success: success, ...reason === undefined ? {} : { error_reason: reason } }) },
     updateChannel,
   )
+  // The packaged feed is independent of the user's distribution channel; GitHub
+  // builds request latest.yml from the newest release for either choice.
+  updates.setFeedChannel(desktopUpdateFeedChannel(manifest, packagedChannel))
 
   if (initialChannel.kind === 'error') updates.suspendConfiguration(initialChannel.error.path)
   const publishChannel = (state: DesktopChannelState): DesktopChannelState => {
@@ -1315,7 +1331,9 @@ async function main(): Promise<void> {
       // Empty colors precede client stylesheet installation; only CSS color values cross IPC.
       const validColor = (value: unknown): value is string => typeof value === 'string'
         && /^(?:#[\da-f]{3,8}|rgba?\([\d.,%\s]+\))$/iu.test(value)
-      if (validColor(color) && validColor(symbolColor)) mainWindow.setTitleBarOverlay({ color, symbolColor })
+      if (validColor(color) && validColor(symbolColor)) {
+        mainWindow.setTitleBarOverlay({ color: WINDOWS_ACRYLIC ? '#00000000' : color, symbolColor })
+      }
     })
   }
 
@@ -1381,7 +1399,7 @@ async function main(): Promise<void> {
     const window = mainWindow ?? createMainWindow()
     await navigateMain(applicationUrl)
     if (isQuitting() || recovery.active || window.isDestroyed()) return
-    if (process.platform === 'win32') window.setBackgroundColor(chromeFallbackFill())
+    if (process.platform === 'win32' && !WINDOWS_ACRYLIC) window.setBackgroundColor(chromeFallbackFill())
     if (activate) window.show()
     else window.showInactive()
     const wasInWorkspace = enteredWorkspace

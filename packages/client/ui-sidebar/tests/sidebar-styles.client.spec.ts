@@ -108,6 +108,15 @@ describe('SidebarRoot.module.css', () => {
     expect(declarations('.root:not(.collapsed) .scrollArea::-webkit-scrollbar')?.get('display')).toBe('none')
   })
 
+  it('shows the native window material through the sidebar on Windows acrylic', () => {
+    for (const platform of ["[data-platform='darwin']", "[data-windows-material='acrylic']"]) {
+      expect(declarations(`:global(${platform}) .root`)?.get('background')).toBe('transparent')
+    }
+    expect(declarations(":global([data-windows-material='acrylic']) .scrollFade")?.get('display')).toBe('none')
+    expect(declarations(":global([data-windows-material='acrylic']) :where(.root:not([role='dialog'])) .newSession")?.get('background'))
+      .toBe('var(--dsw-specific-sidebar-glass-fill)')
+  })
+
   it('keeps the reviewed expanded spacing separate from rail and caption controls', () => {
     expect(declarations('.logoRow')?.get('padding')).toBe('8px 0 8px 8px')
     expect(declarations('.logoRow')?.get('margin-bottom')).toBe('0')

@@ -33,7 +33,7 @@ async function fixture(arch: 'arm64' | 'x64' = 'arm64') {
   await mkdir(join(appPath, 'Contents', 'Resources'), { recursive: true })
   await writeFile(join(appPath, 'payload'), 'signed content')
   await writeMacOSAppUpdateConfig(join(appPath, 'Contents', 'Resources'), {
-    publicUrl: `https://desktop-updates.example.com/dsh-desk/0123456789abcdef0123456789abcdef/feeds/mac-${arch}/`,
+    provider: 'github', owner: 'ihankun', repo: 'deepseek-harness', channel: 'latest',
   }, 'deepseek-harness-updater')
   const version = '1.2.3-alpha.1'
   const base = `deepseek-harness-${version}-mac-${arch}`
@@ -57,7 +57,7 @@ async function fixture(arch: 'arm64' | 'x64' = 'arm64') {
     await writeFile(join(artifact.output, `${base}.${artifact.format}`), contents)
     if (artifact.format === 'zip') {
       await writeFile(join(artifact.output, `${base}.zip.blockmap`), 'blockmap')
-      await writeFile(join(artifact.output, 'nightly-mac.yml'), 'update metadata')
+      await writeFile(join(artifact.output, 'latest-mac.yml'), 'update metadata')
     }
   }
   return { root, appPath, request, apple, build, base }
@@ -107,7 +107,7 @@ describe('parallel macOS artifacts', () => {
         .toEqual({ payload: 'signed content', appTicket: false })
       expect(await readFile(join(f.appPath, 'ticket'), 'utf8')).toBe('accepted')
       expect(await readFile(join(f.appPath, 'Contents', 'Resources', 'app-update.yml'), 'utf8'))
-        .toContain(`/dsh-desk/0123456789abcdef0123456789abcdef/feeds/mac-${arch}/`)
+        .toContain('owner: ihankun')
       expect((await readdir(f.root)).sort()).toEqual(['artifacts'])
       expect(f.apple.verifySignature).toHaveBeenCalledTimes(4)
       expect(f.apple.verifyNotarization).toHaveBeenCalledTimes(1)
@@ -182,7 +182,7 @@ describe('parallel macOS artifacts', () => {
       await expect(packageMacOSArtifacts(f.request, async (artifact) => {
         await f.build(artifact)
         if (failure === 'metadata' && artifact.format === 'zip') {
-          await writeFile(join(artifact.output, 'nightly-mac.yml'), '')
+          await writeFile(join(artifact.output, 'latest-mac.yml'), '')
         }
         if (failure === 'post-update-config' && artifact.format === 'zip') {
           await writeFile(join(artifact.appPath, 'Contents', 'Resources', 'app-update.yml'), '{}')

@@ -40,6 +40,22 @@ export function resolveDesktopBuildTarget(
 export function desktopTargetBuildPaths(target: DesktopAutoUpdateTarget, environment?: NodeJS.ProcessEnv): DesktopTargetBuildPaths
 
 /**
+ * Resolve the verified-archive cache used by runtime and Electron downloads.
+ * `DSH_DESKTOP_PACKAGE_CACHE_DIR` relocates it for CI tool caches. The default
+ * lives in the platform user cache, so `pnpm run clean` and sibling worktrees
+ * reuse archives downloaded once instead of contacting their publishers again.
+ * @param environment - process environment.
+ * @param platform - host platform.
+ * @param home - user home directory.
+ * @returns absolute download cache directory.
+ */
+export function desktopDownloadCache(
+  environment?: NodeJS.ProcessEnv,
+  platform?: NodeJS.Platform,
+  home?: string,
+): string
+
+/**
  * Return the platform and architecture of the payload one release target prepares.
  * Windows is prepared as x64 only, so this differs from the build host on an arm64 Windows machine.
  * @param target - Supported Desktop target name.

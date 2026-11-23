@@ -11,9 +11,9 @@ import {
   resolveMacOSSigningEnvironment,
 } from './desktop-release-environment.mjs'
 import {
-  desktopUpdateMetadataFilename,
-  resolveDesktopAutoUpdateConfig,
-} from '@deepseek-ai/dsh-desktop-publisher/desktop-auto-update-environment.mjs'
+  desktopGitHubUpdateMetadataFilename,
+  resolveDesktopGitHubUpdateConfig,
+} from './desktop-github-update.mjs'
 import { verifyMacOSAppUpdateConfig } from './macos-app-update-config.mjs'
 import { verifyMacOSNotarizedApplication, verifyMacOSSignature } from './verify-macos-signature.mjs'
 
@@ -77,7 +77,7 @@ export async function packageMacOSArtifacts(
   const secrets = Object.entries(environment).filter(([name]) => /KEY|SECRET|TOKEN|PASSWORD|APPLE_ID/iu.test(name)).map(([, value]) => value ?? '')
   const expected = resolveMacOSSigningEnvironment(environment)
   const credentials = resolveMacOSNotarizationEnvironment(environment)
-  const update = resolveDesktopAutoUpdateConfig(environment, 'darwin', arch)
+  const update = resolveDesktopGitHubUpdateConfig(environment)
   const appPath = join(artifactsRoot, arch === 'arm64' ? 'mac-arm64' : 'mac', 'DeepSeek Harness.app')
   const root = await mkdtemp(join(dirname(artifactsRoot), 'notarization-'))
   const zipApp = join(root, 'zip', basename(appPath))
@@ -115,7 +115,7 @@ export async function packageMacOSArtifacts(
       [dmgOutput, `${base}.dmg`],
       [zipOutput, `${base}.zip`],
       [zipOutput, `${base}.zip.blockmap`],
-      [zipOutput, desktopUpdateMetadataFilename(version, 'darwin', update.channel)],
+      [zipOutput, desktopGitHubUpdateMetadataFilename('darwin')],
     ] as const
     for (const [output, filename] of artifacts) {
       const file = join(output, filename)

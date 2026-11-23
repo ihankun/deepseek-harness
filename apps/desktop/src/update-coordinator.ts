@@ -8,7 +8,7 @@ import { gt, valid } from 'semver'
 import type { DesktopUpdateState } from './ipc.ts'
 import { DesktopUpdateHttpExecutor } from './updates/electron-updater/http-executor.ts'
 import { DesktopUpdatePreparationError, downloadFailureDetails } from './update-error.ts'
-import type { DesktopUpdateChannel } from './update-channel.ts'
+import type { DesktopUpdateChannel, DesktopUpdateFeedChannel } from './update-channel.ts'
 import { selectUpdateChannel } from './updates/electron-updater/channel.ts'
 import { discardDesktopUpdate } from './updates/electron-updater/discard.ts'
 
@@ -28,6 +28,7 @@ export class DesktopUpdateCoordinator {
   private checkOperation: Promise<DesktopUpdateState> | undefined
   private downloadOperation: Promise<DesktopUpdateState> | undefined
   private installOperation: Promise<DesktopUpdateState> | undefined
+  private feedChannel: DesktopUpdateFeedChannel
 
   private readonly onProgress = (progress: ProgressInfo): void => {
     if (this.downloadGeneration !== this.generation || this.downloadOperation === undefined || this.downloaded) return
@@ -56,6 +57,7 @@ export class DesktopUpdateCoordinator {
    * @param channel - Installed package channel; omitted test/local callers retain nightly.
    * @param discard - Clears settled library targets and platform resources before another channel is used.
    * @param downloadResult - Once per completed download attempt, including platform preparation failures.
+   * @param feedChannel - Feed file the packaged updater requests; defaults to the distribution channel.
    */
   constructor(
     private readonly publish: (state: DesktopUpdateState) => DesktopUpdateState,
@@ -66,6 +68,7 @@ export class DesktopUpdateCoordinator {
     private readonly downloadResult?: (success: boolean, reason?: string) => void,
     private channel: DesktopUpdateChannel = 'nightly',
     private readonly discard: (updater: AppUpdater) => Promise<void> = discardDesktopUpdate,
+    feedChannel: DesktopUpdateFeedChannel = channel,
   ) {
     if (updater === autoUpdater) {
       // electron-updater omits this internal transport property from its public declarations.
@@ -76,12 +79,23 @@ export class DesktopUpdateCoordinator {
         (authInfo, callback) => { updater.emit('login', authInfo, callback) },
       )
     }
+    this.feedChannel = feedChannel
     this.updater.autoDownload = false
     this.updater.autoInstallOnAppQuit = false
-    selectUpdateChannel(this.updater, channel)
+    selectUpdateChannel(this.updater, feedChannel)
     this.updater.on('download-progress', this.onProgress)
     this.updater.on('update-downloaded', this.onDownloaded)
     this.updater.on('error', this.onError)
+  }
+
+  /**
+   * Select the packaged feed independently of the user-visible distribution channel.
+   * @param channel - Feed file the updater requests.
+   */
+  setFeedChannel(channel: DesktopUpdateFeedChannel): void {
+    this.assertLive()
+    this.feedChannel = channel
+    selectUpdateChannel(this.updater, channel)
   }
 
   /** Latest observable state; complete download identity remains main-process-owned. */
@@ -136,7 +150,7 @@ export class DesktopUpdateCoordinator {
         throw error
       }
       this.channel = channel
-      selectUpdateChannel(this.updater, channel)
+      selectUpdateChannel(this.updater, this.feedChannel)
       this.configurationError = undefined
       this.setState({ phase: 'checking' })
       const result = await this.doCheck()

@@ -1,21 +1,36 @@
 import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
-/** Synchronizes Windows context menus and caption colors with the application document. */
+/** Synchronizes Windows context menus, caption colors, and the native material marker with the application document. */
 import { ipcRenderer } from 'electron'
 import { DESKTOP_IPC } from './ipc.ts'
+import { WINDOWS_ACRYLIC_MATERIAL, WINDOWS_MATERIAL_ARGUMENT } from './window-material.ts'
 import { installWindowsMenu } from './preload-menu.ts'
 
-/** Install the Windows-only titlebar marker and observe application language and palette changes. */
-export function syncWindowsAppearance(): void {
-  if (process.platform !== 'win32') return
+/**
+ * Mark the document root with the Windows caption geometry and the native
+ * material the main process enabled. Defers to DOMContentLoaded when the
+ * preload runs before the document root exists.
+ * @param material - native window material, or undefined for the opaque fallback.
+ */
+export function markWindowsDocument(material: string | undefined): void {
   const mark = (): void => {
     const root = document.documentElement
     root.dataset.windowsTitlebar = ''
+    if (material === undefined) delete root.dataset.windowsMaterial
+    else root.dataset.windowsMaterial = material
     root.style.setProperty('--dsh-windows-titlebar-height', `${WINDOWS_TITLEBAR_HEIGHT}px`)
   }
   // The root can be absent before the HTML parser creates it.
-  if ((document.documentElement as HTMLElement | null) !== null) mark()
+  if ((document.documentElement as HTMLElement | null) === null) window.addEventListener('DOMContentLoaded', mark, { once: true })
+  else mark()
+}
+
+/** Install the Windows-only titlebar and window-material markers and observe application language and palette changes. */
+export function syncWindowsAppearance(): void {
+  if (process.platform !== 'win32') return
+  const material = process.argv.includes(WINDOWS_MATERIAL_ARGUMENT) ? WINDOWS_ACRYLIC_MATERIAL : undefined
+  markWindowsDocument(material)
   const install = (): void => {
-    mark()
+    markWindowsDocument(material)
     const root = document.documentElement
     const menu = installWindowsMenu()
     const probe = document.createElement('span')

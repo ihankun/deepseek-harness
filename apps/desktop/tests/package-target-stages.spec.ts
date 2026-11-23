@@ -197,7 +197,7 @@ it.each(['preflight:windows-signing', 'run build:official', 'run sign:primary-ru
 it.each(['--unsigned', '--prepare-only'])('keeps %s hardware-free and creates no release record', async (mode) => {
   const { run, stages } = supervisor()
   await packageTarget(parseDesktopPackageInvocation(['win-x64', mode], 'win32', 'x64'), environment, run)
-  expect(stages[0]).toBe(mode === '--unsigned' ? 'run build --profile local' : 'run build:official')
+  expect(stages[0]).toBe('run build:official')
   expect(stages).not.toContain('preflight:windows-signing')
   expect(stages).not.toContain('run sign:primary-runtime')
   expect(stages).not.toContain('run sign:primary-runtime --dsh')
@@ -207,7 +207,7 @@ it.each(['--unsigned', '--prepare-only'])('keeps %s hardware-free and creates no
   expect(stages.includes('exec tsx scripts/smoke-packaged-runtime.ts --unsigned')).toBe(mode === '--unsigned')
 })
 
-it.each(['mac-arm64', 'mac-x64', 'win-x64'] as const)('selects branding from the signing mode for %s', async (target) => {
+it.each(['mac-arm64', 'mac-x64', 'win-x64'] as const)('uses the official client build and release packing in every mode on %s', async (target) => {
   const modes = [[], ['--unsigned'], ['--dir'], ['--unsigned', '--dir'], ['--prepare-only'],
     ...(target === 'win-x64' ? [] : [['--skip-notarization'], ['--skip-notarization', '--dir']])]
   for (const flags of modes) {
@@ -219,22 +219,21 @@ it.each(['mac-arm64', 'mac-x64', 'win-x64'] as const)('selects branding from the
     await packageTarget(invocation, {
       ...environment,
       APPLE_KEYCHAIN_PROFILE: 'fixture',
-      DSH_BUILD_CLIENT_PROFILE: unsigned ? 'official' : 'local',
-      DSH_CLIENT_BUILD_PROFILE: unsigned ? 'official' : 'local',
+      DSH_BUILD_CLIENT_PROFILE: unsigned ? 'local' : 'official',
+      DSH_CLIENT_BUILD_PROFILE: unsigned ? 'local' : 'official',
       DSH_CLIENT_TITLE: 'Inherited title',
     }, run)
     const build = stages.find(stage => stage.startsWith('run build'))
-    expect(build).toBe(unsigned ? 'run build --profile local' : 'run build:official')
-    expect(stages.some(stage => stage.startsWith('exec tsx apps/desktop/scripts/pack-local-packages.ts'))).toBe(unsigned)
-    expect(stages.some(stage => stage.startsWith('run release:pack --family dsh'))).toBe(!unsigned)
+    expect(build).toBe('run build:official')
+    expect(stages.some(stage => stage.startsWith('run release:pack --family dsh'))).toBe(true)
   }
 })
 
 it.each([
-  ['mac-arm64', 'run build --profile local'],
-  ['win-x64', 'run build --profile local'],
-  ['mac-arm64', 'exec tsx apps/desktop/scripts/pack-local-packages.ts'],
-  ['win-x64', 'exec tsx apps/desktop/scripts/pack-local-packages.ts'],
+  ['mac-arm64', 'run build:official'],
+  ['win-x64', 'run build:official'],
+  ['mac-arm64', 'run release:pack --family dsh'],
+  ['win-x64', 'run release:pack --family dsh'],
 ] as const)('stops unsigned %s packaging when %s fails', async (target, failure) => {
   const { run, stages } = supervisor(failure)
   const invocation = parseDesktopPackageInvocation([target, '--unsigned'],
@@ -243,7 +242,7 @@ it.each([
   const failedAt = stages.findIndex(stage => stage.startsWith(failure))
   expect(failedAt).toBeGreaterThanOrEqual(0)
   expect(stages.slice(failedAt + 1)).toEqual(
-    target === 'win-x64' && failure.startsWith('exec tsx') ? ['run prepare:runtime'] : [])
+    target === 'win-x64' && failure === 'run release:pack --family dsh' ? ['run prepare:runtime'] : [])
   expect(stages.some(stage => stage.startsWith('--dir apps/desktop-host pack'))).toBe(false)
   expect(writeFileSync).not.toHaveBeenCalled()
 })

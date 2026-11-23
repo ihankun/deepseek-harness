@@ -33,7 +33,15 @@ export async function downloadPrimaryRuntimeAsset(url: string, sha256: string, c
     cached = false
     const timeout = Number(process.env.DSH_RESOURCE_DOWNLOAD_TIMEOUT_MS ?? '300000')
     if (!Number.isSafeInteger(timeout) || timeout < 1 || timeout > 2_147_483_647) throw new Error('DSH_RESOURCE_DOWNLOAD_TIMEOUT_MS must be an integer from 1 to 2147483647')
-    const response = await fetch(url, { signal: AbortSignal.timeout(timeout) })
+    let response: Response
+    try {
+      response = await fetch(url, { signal: AbortSignal.timeout(timeout) })
+    } catch (error) {
+      // undici reports connection failures only as `fetch failed`; name the
+      // archive and network cause so a blocked host is diagnosable.
+      const cause = error instanceof Error && error.cause instanceof Error ? error.cause.message : ''
+      throw new Error(`primary runtime download: ${url} failed${cause === '' ? '' : `: ${cause}`}`, { cause: error })
+    }
     if (!response.ok) throw new Error(`primary runtime download: ${String(response.status)} ${url}`)
     bytes = Buffer.from(await response.arrayBuffer())
   }

@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest'
 import { DESKTOP_IPC } from '../src/ipc.ts'
-import { syncWindowsAppearance } from '../src/preload-windows.ts'
+import { markWindowsDocument, syncWindowsAppearance } from '../src/preload-windows.ts'
+import {
+  WINDOWS_ACRYLIC_MATERIAL, WINDOWS_MATERIAL_ARGUMENT, WINDOWS_MATERIAL_ATTRIBUTE,
+} from '../src/window-material.ts'
 
 const send = vi.hoisted(() => vi.fn())
 vi.mock('electron', () => ({ ipcRenderer: { send } }))
@@ -10,11 +13,21 @@ vi.mock('../src/preload-menu.ts', () => ({ installWindowsMenu: () => ({ update: 
 afterEach(() => {
   window.dispatchEvent(new Event('pagehide'))
   document.documentElement.removeAttribute('data-windows-titlebar')
+  document.documentElement.removeAttribute(WINDOWS_MATERIAL_ATTRIBUTE)
   document.documentElement.style.removeProperty('--dsh-windows-titlebar-height')
   document.documentElement.lang = 'en'
   document.body.removeAttribute('data-ds-dark-theme')
   vi.restoreAllMocks()
   send.mockClear()
+})
+
+it('marks the acrylic material only while the main process enables it', () => {
+  markWindowsDocument(WINDOWS_ACRYLIC_MATERIAL)
+  expect(document.documentElement.getAttribute(WINDOWS_MATERIAL_ATTRIBUTE)).toBe('acrylic')
+  expect(document.documentElement.hasAttribute('data-windows-titlebar')).toBe(true)
+  expect(document.documentElement.style.getPropertyValue('--dsh-windows-titlebar-height')).toBe('40px')
+  markWindowsDocument(undefined)
+  expect(document.documentElement.hasAttribute(WINDOWS_MATERIAL_ATTRIBUTE)).toBe(false)
 })
 
 it.each(['darwin', 'linux'] as const)('does not install Windows controls on %s', (platform) => {
@@ -38,9 +51,11 @@ it('synchronizes live language and palette changes and stops observing a closed 
   }
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as unknown as CanvasRenderingContext2D)
   document.documentElement.lang = 'en'
-  syncWindowsAppearance()
+  process.argv.push(WINDOWS_MATERIAL_ARGUMENT)
+  try { syncWindowsAppearance() } finally { process.argv.pop() }
   expect(send).not.toHaveBeenCalled()
   expect(document.documentElement.hasAttribute('data-windows-titlebar')).toBe(true)
+  expect(document.documentElement.getAttribute(WINDOWS_MATERIAL_ATTRIBUTE)).toBe('acrylic')
   window.dispatchEvent(new Event('DOMContentLoaded'))
   expect(document.documentElement.style.getPropertyValue('--dsh-windows-titlebar-height')).toBe('40px')
   expect(send).toHaveBeenLastCalledWith(DESKTOP_IPC.windowsAppearance, 'en', 'rgba(255, 255, 255, 1)', 'rgba(0, 0, 0, 1)')

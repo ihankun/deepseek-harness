@@ -74,6 +74,18 @@
   overflow: hidden;
 }
 
+/* Windows acrylic: one translucent tint layer on the frame shows the native
+   material through the caption strip, the sidebar column, and the content
+   column's rounded corner; the centre column keeps its opaque base. */
+:global([data-windows-material='acrylic']) .frame {
+  background: var(--dsw-specific-sidebar-tint);
+}
+
+:global([data-windows-material='acrylic']) .frame::before,
+:global([data-windows-material='acrylic']) .frame:not([data-sidebar-drawer]) .sidebarCol {
+  background: transparent;
+}
+
 .mainPanel {
   display: flex;
   flex-direction: column;

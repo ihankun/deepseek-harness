@@ -44,6 +44,21 @@ describe('desktop package target', () => {
       .toThrow(/at most one target/u)
   })
 
+  it('expands the short win and mac package aliases', () => {
+    expect(parseDesktopPackageInvocation(['win', '--unsigned'], 'win32', 'x64')).toMatchObject({
+      target: { name: 'win-x64' }, unsigned: true,
+    })
+    expect(parseDesktopPackageInvocation(['win', 'x86', '--unsigned'], 'win32', 'x64').target.name).toBe('win-x64')
+    expect(parseDesktopPackageInvocation(['win', 'x64', '--unsigned'], 'win32', 'x64').target.name).toBe('win-x64')
+    expect(() => parseDesktopPackageInvocation(['win', 'arm'], 'win32', 'x64')).toThrow(/Windows arm64/u)
+    expect(parseDesktopPackageInvocation(['mac', '--unsigned'], 'darwin', 'arm64').target.name).toBe('mac-arm64')
+    expect(parseDesktopPackageInvocation(['mac', 'arm', '--unsigned'], 'darwin', 'arm64').target.name).toBe('mac-arm64')
+    expect(parseDesktopPackageInvocation(['mac', 'x86', '--unsigned'], 'darwin', 'arm64').target.name).toBe('mac-x64')
+    expect(() => parseDesktopPackageInvocation(['mac'], 'win32', 'x64')).toThrow(/macOS build host/u)
+    expect(() => parseDesktopPackageInvocation(['mac', 'x86', 'extra'], 'darwin', 'arm64'))
+      .toThrow(/at most one target/u)
+  })
+
   it('parses a build version, including the separator a pnpm run script forwards', () => {
     expect(parseDesktopPackageInvocation(['mac-arm64'], 'darwin', 'arm64').requestedBuildVersion).toBeUndefined()
     expect(parseDesktopPackageInvocation(['mac-arm64', '--build-version', '0.1.6-alpha.2.20260921.1'], 'darwin', 'arm64')

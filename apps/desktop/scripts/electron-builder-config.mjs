@@ -20,7 +20,8 @@ import {
   resolveWindowsUpdatePublisher,
   scrubWindowsSigningEnvironment,
 } from './windows-sign.mjs'
-import { resolveDesktopAutoUpdateConfig } from '@deepseek-ai/dsh-desktop-publisher/desktop-auto-update-environment.mjs'
+import { resolveDesktopUpdateChannel } from '@deepseek-ai/dsh-desktop-publisher/desktop-auto-update-environment.mjs'
+import { resolveDesktopGitHubUpdateConfig } from './desktop-github-update.mjs'
 import { resolveDesktopBuildCommit } from './desktop-build-commit.mjs'
 import { resolveDesktopBuildVersion } from './desktop-build-version.mjs'
 import { resolveDesktopPolicyEnvironment } from './desktop-policy-environment.mjs'
@@ -99,7 +100,8 @@ export function createElectronBuilderConfig(
   if (windowsSigner !== undefined) {
     installWindowsNsisBootstrapSigner({ sign: windowsSigner })
   }
-  const update = unsigned ? undefined : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)
+  const updateSource = resolveDesktopGitHubUpdateConfig(env)
+  const updateChannel = resolveDesktopUpdateChannel(env)
   if (preparedRuntime !== undefined) buildPaths.dsh = preparedRuntime
   // electron-builder merges extraMetadata into the packaged manifest, so a build version here reaches
   // the artifact names, the update feed, and the installed app.getVersion() the updater compares against.
@@ -111,7 +113,8 @@ export function createElectronBuilderConfig(
     protocols: [{ name: 'DeepSeek Harness', schemes: ['dsh'] }],
     extraMetadata: {
       dshDesktopAppId: appId,
-      dshDesktopUpdateChannel: update?.channel ?? 'nightly',
+      dshDesktopUpdateChannel: updateChannel,
+      dshDesktopUpdateFeedChannel: updateSource.channel,
       ...(policy === undefined ? {} : { dshMandatoryUpdatePolicy: policy }),
       ...buildVersion === productVersion ? {} : { version: buildVersion },
       ...packaged === undefined ? {} : { dshBuildCommit: packaged.commit, dshBuildDirty: packaged.dirty },
@@ -119,7 +122,8 @@ export function createElectronBuilderConfig(
     productName: 'DeepSeek Harness',
     // The default copyright uses author.name; this line names the product instead.
     copyright: `Copyright © ${new Date().getFullYear()} \${productName}`,
-    // Unsigned builds carry their own suffix so a shared file can never pass for a release artifact.
+    // Unnotarized debug artifacts carry their own suffix; unsigned builds keep the
+    // official name so they can replace an installed official package directly.
     artifactName: `deepseek-harness-\${version}-\${os}-\${arch}${output.suffix}.\${ext}`,
     directories: { output: output.directory },
     asar: true,
@@ -180,7 +184,9 @@ export function createElectronBuilderConfig(
       // Prepared runtime files retain their signatures; PAK resources are sealed by their enclosing bundle.
       signIgnore: ['/Contents/Resources/app\\.asar\\.unpacked/dsh(?:/|$)', '/Contents/Resources/runtime/primary-runtime(?:/|$)', '\\.pak$'],
       notarize: !unsigned && !skipNotarization,
-      target: unsigned ? ['dmg'] : ['dmg', 'zip'],
+      // The ZIP is the macOS update payload; every build keeps it so packaged
+      // applications can check the GitHub release feed.
+      target: ['dmg', 'zip'],
     },
     dmg: {
       format: 'ULMO',
@@ -204,7 +210,7 @@ export function createElectronBuilderConfig(
     afterPack: async context => {
       const { verifyDesktopRuntime } = await import('../lib/types/runtime-tree.js')
       const resourcesDir = context.packager.getResourcesDir(context.appOutDir)
-      if (resolvedPlatform === 'darwin' && update !== undefined) {
+      if (resolvedPlatform === 'darwin') {
         await writeMacOSAppUpdateConfig(resourcesDir, resolveMacOSAppUpdateFeed(context.packager.config.publish),
           context.packager.appInfo.updaterCacheDirName)
       }
@@ -226,10 +232,8 @@ export function createElectronBuilderConfig(
       }
       if (context.electronPlatformName !== 'darwin' || unsigned) return
       const appPath = join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`)
-      if (update !== undefined) {
-        await verifyMacOSAppUpdateConfig(appPath, resolveMacOSAppUpdateFeed(context.packager.config.publish),
-          context.packager.appInfo.updaterCacheDirName)
-      }
+      await verifyMacOSAppUpdateConfig(appPath, resolveMacOSAppUpdateFeed(context.packager.config.publish),
+        context.packager.appInfo.updaterCacheDirName)
       verifyMacOSSignatureAfterSign(context, macOSSigning ?? resolveMacOSSigningEnvironment(env))
     },
     artifactBuildCompleted: artifact => {
@@ -271,6 +275,6 @@ export function createElectronBuilderConfig(
       differentialPackage: true,
     },
     detectUpdateChannel: false,
-    publish: update === undefined ? null : [{ provider: 'generic', url: update.publicUrl, channel: update.channel }],
+    publish: [updateSource],
   }
 }

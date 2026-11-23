@@ -114,7 +114,7 @@ Typert 通过 `tsconfig.host.json` 分析 Host 类型，在包编译之前生成
 
 `pnpm run build` 与 `build:artifacts` 会内联根包版本、七位源码 commit，并在 Git 报告本地变化时内联 dirty 标记；调用方提供的其他 `DSH_CLIENT_*` 值也会被继承。`pnpm run build:official` 是与 CI 和 release 产物构建等价的跨平台本地命令，并省略本地 dirty 标记。每次 `build` 或 `build:artifacts` 成功后都会写入一份被 gitignore 的记录，把精确公开值与 Vite 输出及动态 client bundle 绑定；release 打包和 built Web 测试会拒绝缺少记录或被后续局部构建改动的产物。`pnpm run dev:web` 会先执行 `build:artifacts`（`--skip-build` 则复用现有产物树），再读取一次当前版本和 Git 状态，并在本次会话的所有 watcher stage 之间共享该环境；它不会校验完整构建记录，因为 watcher stage 会重写记录覆盖的产物。
 
-`pnpm run build --profile local` 显式选择本地客户端品牌，保留仓库版本、commit 与 dirty 元数据，并丢弃继承的客户端标题及其他公开覆盖值。`build:official` 保留其精确的官方值。[Desktop 打包](../apps/desktop/packaging/README.zh.md#configuration-and-local-builds) 按签名模式选择 profile。
+`pnpm run build --profile local` 显式选择本地客户端品牌，保留仓库版本、commit 与 dirty 元数据，并丢弃继承的客户端标题及其他公开覆盖值。`build:official` 保留其精确的官方值。[Desktop 打包](../apps/desktop/packaging/README.zh.md#configuration-and-local-builds) 始终构建官方 profile；签名模式不再选择客户端 profile。
 
 静态分析和测试通过 base 的 `paths` 映射把工作区 import 解析到 `src`，且必须在干净树上通过；消费构建产物 `lib/` 的门禁显式声明该依赖。生成的 Host-for-Client Remote 声明是有意设置的例外：公共 `typecheck`、`lint` 和 `doc-typecheck` 命令会先生成这些声明，而内部 `*:contracts-ready` 脚本假定调用它的公共命令或调度器门禁已经依赖 Typert 约定生成阶段或完整构建。门禁准备约定见 [Typert Remote Agent Note](../.agents/notes/implemented/architecture/2026-08-02-typert-remote-method-calls.zh.md)。
 
