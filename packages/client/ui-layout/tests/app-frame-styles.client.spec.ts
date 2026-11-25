@@ -1,4 +1,4 @@
-/** Window-material contracts in the frame stylesheet. */
+/** Windows titlebar contracts in the frame stylesheet. */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, it } from 'vitest'
@@ -25,17 +25,8 @@ function declarations(selector: string): Map<string, string> | undefined {
   return undefined
 }
 
-it('keeps the opaque Windows chrome without the native material', () => {
+it('keeps the opaque Windows chrome', () => {
   expect(declarations(':global([data-windows-titlebar]) .frame')?.get('background')).toBe('var(--dsw-specific-sidebar-fill)')
   expect(declarations(':global([data-windows-titlebar]) .frame::before')?.get('background')).toBe('var(--dsw-specific-sidebar-fill)')
   expect(declarations(':global([data-windows-titlebar]) .centerCol')?.get('background')).toBe('var(--dsw-alias-bg-base)')
-})
-
-it('shows the acrylic material through one translucent chrome tint', () => {
-  expect(declarations(":global([data-windows-material='acrylic']) .frame")?.get('background'))
-    .toBe('var(--dsw-specific-sidebar-tint)')
-  expect(declarations(":global([data-windows-material='acrylic']) .frame::before")?.get('background'))
-    .toBe('transparent')
-  expect(declarations(":global([data-windows-material='acrylic']) .frame:not([data-sidebar-drawer]) .sidebarCol")?.get('background'))
-    .toBe('transparent')
 })

@@ -484,14 +484,12 @@ html[data-platform='darwin'] body[data-ds-dark-theme] {
   --dsw-specific-menu: rgba(48, 49, 54, 0.94);
 }
 
-/* Native window-material sidebars (macOS vibrancy and Windows acrylic): glass
- * control fills (the collapsed rail drops the light fill but keeps the dark
- * one), the macOS column's top and bottom washes with their fully transparent
- * ends, and the translucent tint both platforms show the material through.
- * Dark drops the tint's blue cast (it reads purple over dark fills) and thins
- * it so more of the material shows. */
-html[data-platform='darwin'] body,
-html[data-windows-material='acrylic'] body {
+/* macOS vibrancy sidebars: glass control fills (the collapsed rail drops the
+ * light fill but keeps the dark one), the column's top and bottom washes with
+ * their fully transparent ends, and the translucent tint that lets the
+ * material show through. Dark drops the tint's blue cast (it reads purple over
+ * dark fills) and thins it so more of the material shows. */
+html[data-platform='darwin'] body {
   --dsw-specific-sidebar-glass-collapsed-fill: transparent;
   --dsw-specific-sidebar-glass-collapsed-hover: var(--dsw-alias-interactive-bg-hover);
   --dsw-specific-sidebar-glass-fill: rgb(255 255 255 / 0.55);
@@ -503,8 +501,7 @@ html[data-windows-material='acrylic'] body {
   --dsw-specific-sidebar-wash-top-clear: rgb(122 155 240 / 0);
 }
 
-html[data-platform='darwin'] body[data-ds-dark-theme],
-html[data-windows-material='acrylic'] body[data-ds-dark-theme] {
+html[data-platform='darwin'] body[data-ds-dark-theme] {
   --dsw-specific-sidebar-glass-collapsed-fill: var(--dsw-specific-sidebar-glass-fill);
   --dsw-specific-sidebar-glass-collapsed-hover: var(--dsw-specific-sidebar-glass-hover);
   --dsw-specific-sidebar-glass-fill: rgb(255 255 255 / 0.15);

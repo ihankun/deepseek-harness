@@ -29,11 +29,9 @@
   transition: width var(--ds-transition-duration-slow) var(--ds-ease-in-out);
 }
 
-/* macOS desktop and Windows acrylic: the AppFrame column owns the translucent
-   sidebar tint; an opaque fill here would sit on top of it and block the window
-   material. */
-:global([data-platform='darwin']) .root,
-:global([data-windows-material='acrylic']) .root {
+/* macOS desktop: the AppFrame column owns the translucent sidebar tint; an
+   opaque fill here would sit on top of it and block the window material. */
+:global([data-platform='darwin']) .root {
   background: transparent;
 }
 
@@ -472,18 +470,15 @@
   }
 }
 
-/* macOS vibrancy and Windows acrylic: the themed elevated fill reads as a
-   foreign slab on the material sidebar; a white wash sits in the glass like
-   native macOS sidebar controls; the glass tokens lower its alpha in dark
-   mode. */
-:global([data-platform='darwin']) :where(.root:not([role='dialog'])) .newSession,
-:global([data-windows-material='acrylic']) :where(.root:not([role='dialog'])) .newSession {
+/* macOS vibrancy: the themed elevated fill reads as a foreign slab on the
+   material sidebar; a white wash sits in the glass like native macOS sidebar
+   controls; the glass tokens lower its alpha in dark mode. */
+:global([data-platform='darwin']) :where(.root:not([role='dialog'])) .newSession {
   background: var(--dsw-specific-sidebar-glass-fill);
 }
 
 @media (hover: hover) {
-  :global([data-platform='darwin']) :where(.root:not([role='dialog'])) .newSession:hover,
-  :global([data-windows-material='acrylic']) :where(.root:not([role='dialog'])) .newSession:hover {
+  :global([data-platform='darwin']) :where(.root:not([role='dialog'])) .newSession:hover {
     background: var(--dsw-specific-sidebar-glass-hover);
   }
 }
@@ -513,14 +508,12 @@
   }
 }
 
-:global([data-platform='darwin']) :where(.root:not([role='dialog'])).collapsed .newSession,
-:global([data-windows-material='acrylic']) :where(.root:not([role='dialog'])).collapsed .newSession {
+:global([data-platform='darwin']) :where(.root:not([role='dialog'])).collapsed .newSession {
   background: var(--dsw-specific-sidebar-glass-collapsed-fill);
 }
 
 @media (hover: hover) {
-  :global([data-platform='darwin']) :where(.root:not([role='dialog'])).collapsed .newSession:hover,
-  :global([data-windows-material='acrylic']) :where(.root:not([role='dialog'])).collapsed .newSession:hover {
+  :global([data-platform='darwin']) :where(.root:not([role='dialog'])).collapsed .newSession:hover {
     background: var(--dsw-specific-sidebar-glass-collapsed-hover);
   }
 }
@@ -632,7 +625,6 @@
 }
 
 :global([data-platform='darwin']) .scrollFade,
-:global([data-windows-material='acrylic']) .scrollFade,
 .collapsed .scrollFade,
 .collapsed .scrollArea::before,
 .collapsed .scrollArea::after {

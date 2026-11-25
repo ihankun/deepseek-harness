@@ -45,14 +45,6 @@ html[data-platform='darwin'] body {
   background: transparent;
 }
 
-/* Windows desktop acrylic (the preload marks the supported material): the
-   sidebar and caption strip show the native material through the transparent
-   page; the content column paints its own opaque base. */
-html[data-windows-material='acrylic'],
-html[data-windows-material='acrylic'] body {
-  background: transparent;
-}
-
 /* Menu backings paint below page content but above the native vibrancy. */
 html[data-platform='darwin'] body {
   isolation: isolate;

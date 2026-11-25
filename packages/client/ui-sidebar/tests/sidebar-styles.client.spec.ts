@@ -108,12 +108,10 @@ describe('SidebarRoot.module.css', () => {
     expect(declarations('.root:not(.collapsed) .scrollArea::-webkit-scrollbar')?.get('display')).toBe('none')
   })
 
-  it('shows the native window material through the sidebar on Windows acrylic', () => {
-    for (const platform of ["[data-platform='darwin']", "[data-windows-material='acrylic']"]) {
-      expect(declarations(`:global(${platform}) .root`)?.get('background')).toBe('transparent')
-    }
-    expect(declarations(":global([data-windows-material='acrylic']) .scrollFade")?.get('display')).toBe('none')
-    expect(declarations(":global([data-windows-material='acrylic']) :where(.root:not([role='dialog'])) .newSession")?.get('background'))
+  it('shows macOS vibrancy through the sidebar', () => {
+    expect(declarations(":global([data-platform='darwin']) .root")?.get('background')).toBe('transparent')
+    expect(declarations(":global([data-platform='darwin']) .scrollFade")?.get('display')).toBe('none')
+    expect(declarations(":global([data-platform='darwin']) :where(.root:not([role='dialog'])) .newSession")?.get('background'))
       .toBe('var(--dsw-specific-sidebar-glass-fill)')
   })
 
